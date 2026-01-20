@@ -23,6 +23,9 @@ export interface UserProfile {
   backgroundType: 'theme' | 'color' | 'image';
   backgroundColor?: string;
   backgroundImage?: string;
+  backgroundBlur?: number;       // New: for HD clarity management
+  backgroundOpacity?: number;    // New: for text contrast
+  backgroundGrayscale?: boolean; // New: for aesthetic control
   socials: {
     instagram?: string;
     twitter?: string;

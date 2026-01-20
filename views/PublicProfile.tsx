@@ -66,157 +66,181 @@ const PublicProfile: React.FC = () => {
   const bgStyle: React.CSSProperties = profile.backgroundType === 'color' 
     ? { backgroundColor: profile.backgroundColor } 
     : profile.backgroundType === 'image' 
-    ? { backgroundImage: `url(${profile.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } 
+    ? { 
+        backgroundImage: `url(${profile.backgroundImage})`, 
+        backgroundSize: 'cover', 
+        backgroundPosition: 'center', 
+        backgroundAttachment: 'fixed',
+        filter: `${profile.backgroundGrayscale ? 'grayscale(1)' : ''} blur(${profile.backgroundBlur || 0}px)`
+      } 
     : {};
 
   const bgClassName = profile.backgroundType === 'theme' ? theme.background : '';
 
   return (
-    <div className={`min-h-screen flex flex-col items-center p-6 sm:p-12 transition-colors duration-1000 ${bgClassName}`} style={bgStyle}>
-      <style>{`
-        @keyframes pulse-custom {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.03); }
-          100% { transform: scale(1); }
-        }
-        .animate-featured { animation: pulse-custom 2s infinite ease-in-out; }
-      `}</style>
+    <div className="relative min-h-screen w-full overflow-hidden">
+      {/* Background Layer */}
+      <div 
+        className={`fixed inset-0 transition-all duration-1000 ${bgClassName}`} 
+        style={bgStyle}
+      />
+      
+      {/* HD Dimmer Overlay */}
+      {profile.backgroundType === 'image' && (
+        <div 
+          className="fixed inset-0 transition-opacity duration-1000 z-0 pointer-events-none"
+          style={{ backgroundColor: `rgba(0,0,0,${profile.backgroundOpacity || 0})` }}
+        />
+      )}
 
-      <div className="max-w-[680px] w-full flex flex-col items-center">
-        {/* Profile Header */}
-        <div className="mt-12 mb-6">
-          <img 
-            src={profile.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`} 
-            alt="Avatar" 
-            className="w-28 h-28 rounded-full border-4 border-white/30 object-cover shadow-2xl hover:rotate-3 transition-transform"
-          />
-        </div>
-        
-        <h1 className={`text-3xl font-black mb-2 tracking-tight ${theme.textColor}`}>
-          @{profile.username}
-        </h1>
-        
-        <p className={`text-center mb-12 text-lg opacity-90 max-w-sm font-medium leading-relaxed ${theme.textColor}`}>
-          {profile.bio}
-        </p>
+      {/* Main Content Area */}
+      <div className="relative z-10 flex flex-col items-center p-6 sm:p-12">
+        <style>{`
+          @keyframes pulse-custom {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+          }
+          .animate-featured { animation: pulse-custom 2s infinite ease-in-out; }
+          .backdrop-glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        `}</style>
 
-        {/* Hero Windows Grid */}
-        {heroLinks.length > 0 && (
-          <div className={`w-full grid gap-6 mb-10 ${heroLinks.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-            {heroLinks.map(link => {
-              const ytId = getYouTubeId(link.url);
-              const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&auto=format&fit=crop&q=80`;
+        <div className="max-w-[680px] w-full flex flex-col items-center">
+          {/* Profile Header */}
+          <div className="mt-12 mb-6">
+            <img 
+              src={profile.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`} 
+              alt="Avatar" 
+              className="w-28 h-28 rounded-full border-4 border-white/30 object-cover shadow-2xl hover:rotate-3 transition-transform duration-500"
+            />
+          </div>
+          
+          <h1 className={`text-4xl font-black mb-2 tracking-tight drop-shadow-lg ${theme.textColor}`}>
+            @{profile.username}
+          </h1>
+          
+          <p className={`text-center mb-12 text-lg opacity-90 max-w-sm font-semibold leading-relaxed drop-shadow-lg ${theme.textColor}`}>
+            {profile.bio}
+          </p>
+
+          {/* Hero Windows Grid */}
+          {heroLinks.length > 0 && (
+            <div className={`w-full grid gap-8 mb-12 ${heroLinks.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+              {heroLinks.map(link => {
+                const ytId = getYouTubeId(link.url);
+                const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&auto=format&fit=crop&q=80`;
+                return (
+                  <a 
+                    key={link.id}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`group relative aspect-video rounded-[2.5rem] overflow-hidden shadow-2xl border-2 border-white/20 transform transition-all hover:scale-[1.02] active:scale-[0.98] ${heroLinks.length === 1 ? 'md:max-w-xl mx-auto w-full' : ''}`}
+                  >
+                    <img src={thumb} alt={link.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
+                       <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-2xl border border-white/30 flex items-center justify-center mb-4 group-hover:bg-white/40 transition-all mx-auto">
+                          <i className="fa-solid fa-play text-white text-xl ml-1"></i>
+                       </div>
+                       <h3 className="text-white font-black text-2xl text-center drop-shadow-2xl">{link.title}</h3>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Standard Links List */}
+          <div className="w-full space-y-6">
+            {standardLinks.map((link) => {
+              if (link.type === 'newsletter') {
+                return (
+                  <div key={link.id} className={`w-full p-8 ${theme.buttonColor} ${theme.buttonTextColor} ${theme.buttonRadius} shadow-2xl backdrop-blur-xl border border-white/20`}>
+                    <h3 className="text-center font-black text-xl mb-6 flex items-center justify-center gap-3">
+                      <i className="fa-solid fa-envelope-open-text"></i> {link.title}
+                    </h3>
+                    {subscribed ? (
+                      <div className="text-center animate-bounce text-green-400 font-black py-4">Welcome to the inner circle! ✨</div>
+                    ) : (
+                      <form onSubmit={handleSubscribe} className="flex gap-3">
+                        <input 
+                          type="email" 
+                          required 
+                          placeholder="Drop your email..." 
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="flex-1 bg-black/10 rounded-2xl px-5 py-4 outline-none focus:ring-4 focus:ring-indigo-500/50 text-base border border-white/10 font-bold"
+                        />
+                        <button type="submit" className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black hover:scale-105 transition-all shadow-lg active:scale-95">JOIN</button>
+                      </form>
+                    )}
+                  </div>
+                );
+              }
+
+              const favicon = getFaviconUrl(link.url);
+
               return (
                 <a 
-                  key={link.id}
+                  key={link.id} 
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`group relative aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-2 border-white/20 transform transition-all hover:scale-[1.02] active:scale-[0.98] ${heroLinks.length === 1 ? 'md:max-w-xl mx-auto w-full' : ''}`}
+                  className={`group block w-full py-6 px-10 flex items-center justify-between text-2xl font-black shadow-2xl transform transition-all hover:scale-[1.04] active:scale-[0.98] ${theme.buttonColor} ${theme.buttonTextColor} ${theme.buttonRadius} backdrop-blur-xl border border-white/10 ${link.isFeatured ? 'animate-featured ring-4 ring-white/30' : ''}`}
                 >
-                  <img src={thumb} alt={link.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
-                     <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center mb-4 group-hover:bg-white/30 transition-all mx-auto">
-                        <i className="fa-solid fa-play text-white text-xl ml-1"></i>
-                     </div>
-                     <h3 className="text-white font-black text-xl text-center drop-shadow-lg">{link.title}</h3>
+                  <div className="flex items-center gap-5">
+                    {link.type === 'shop' && <i className="fa-solid fa-shopping-bag opacity-70"></i>}
+                    {link.type === 'tip' && <i className="fa-solid fa-bolt-lightning opacity-70"></i>}
+                    {link.type === 'standard' && favicon && (
+                      <img 
+                        src={favicon} 
+                        className="w-7 h-7 object-contain rounded-lg shadow-sm" 
+                        alt=""
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                      />
+                    )}
+                    {link.type === 'standard' && !favicon && <i className="fa-solid fa-share-nodes opacity-70"></i>}
+                    <span className="tracking-tight">{link.title}</span>
                   </div>
+                  {link.price && <span className="bg-black/10 px-4 py-1 rounded-xl text-sm font-black tracking-widest uppercase">{link.price}</span>}
+                  {!link.price && <i className="fa-solid fa-chevron-right text-xs opacity-20 group-hover:opacity-100 transition-opacity"></i>}
                 </a>
               );
             })}
           </div>
-        )}
 
-        {/* Standard Links List */}
-        <div className="w-full space-y-5">
-          {standardLinks.map((link) => {
-            if (link.type === 'newsletter') {
+          {/* Social Icons */}
+          <div className="mt-20 flex flex-wrap justify-center gap-10">
+            {Object.entries(profile.socials).map(([platform, handle]) => {
+              if (!handle) return null;
+              const iconClass = platform === 'twitter' ? 'fa-brands fa-x-twitter' : `fa-brands fa-${platform}`;
               return (
-                <div key={link.id} className={`w-full p-6 ${theme.buttonColor} ${theme.buttonTextColor} ${theme.buttonRadius} shadow-xl backdrop-blur-lg`}>
-                  <h3 className="text-center font-black mb-4 flex items-center justify-center gap-2">
-                    <i className="fa-solid fa-envelope"></i> {link.title}
-                  </h3>
-                  {subscribed ? (
-                    <p className="text-center text-sm font-bold text-green-500 py-2">Thanks for subscribing! ✨</p>
-                  ) : (
-                    <form onSubmit={handleSubscribe} className="flex gap-2">
-                      <input 
-                        type="email" 
-                        required 
-                        placeholder="your@email.com" 
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="flex-1 bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 text-sm border border-black/10"
-                      />
-                      <button type="submit" className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:scale-105 transition-all">Join</button>
-                    </form>
-                  )}
-                </div>
-              );
-            }
-
-            const favicon = getFaviconUrl(link.url);
-
-            return (
-              <a 
-                key={link.id} 
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`group block w-full py-5 px-8 flex items-center justify-between text-xl font-black shadow-xl transform transition-all hover:scale-[1.03] active:scale-[0.98] ${theme.buttonColor} ${theme.buttonTextColor} ${theme.buttonRadius} backdrop-blur-md ${link.isFeatured ? 'animate-featured ring-2 ring-white/50' : ''}`}
-              >
-                <div className="flex items-center gap-4">
-                  {link.type === 'shop' && <i className="fa-solid fa-bag-shopping opacity-60"></i>}
-                  {link.type === 'tip' && <i className="fa-solid fa-mug-hot opacity-60"></i>}
-                  {link.type === 'standard' && favicon && (
-                    <img 
-                      src={favicon} 
-                      className="w-6 h-6 object-contain rounded-md" 
-                      alt=""
-                      onError={(e) => (e.currentTarget.style.display = 'none')}
-                    />
-                  )}
-                  {link.type === 'standard' && !favicon && <i className="fa-solid fa-link opacity-60 text-lg"></i>}
-                  <span>{link.title}</span>
-                </div>
-                {link.price && <span className="bg-black/10 px-3 py-1 rounded-lg text-sm font-black">{link.price}</span>}
-                {!link.price && <i className="fa-solid fa-arrow-up-right-from-square text-xs opacity-30 group-hover:opacity-100 transition-opacity"></i>}
-              </a>
-            );
-          })}
-        </div>
-
-        {/* Social Icons */}
-        <div className="mt-16 flex flex-wrap justify-center gap-8">
-          {Object.entries(profile.socials).map(([platform, handle]) => {
-            if (!handle) return null;
-            const iconClass = platform === 'twitter' ? 'fa-brands fa-x-twitter' : `fa-brands fa-${platform}`;
-            return (
-              <a 
-                key={platform} 
-                href={`https://${platform === 'twitter' ? 'x' : platform}.com/${handle}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${theme.textColor} opacity-60 hover:opacity-100 transition-all transform hover:scale-125 hover:-translate-y-1`}
-              >
-                <i className={`${iconClass} text-4xl`}></i>
-              </a>
-            )
-          })}
-        </div>
-
-        {/* Brand Footer */}
-        <footer className="mt-24 pb-12 flex flex-col items-center gap-4">
-          <div className={`flex items-center gap-2 font-black text-2xl tracking-tighter opacity-40 ${theme.textColor}`}>
-            <div className="bg-white/20 p-1.5 rounded-xl backdrop-blur-sm">
-              <i className="fa-solid fa-bolt"></i>
-            </div>
-            LinkPulse
+                <a 
+                  key={platform} 
+                  href={`https://${platform === 'twitter' ? 'x' : platform}.com/${handle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${theme.textColor} opacity-60 hover:opacity-100 transition-all transform hover:scale-125 hover:-translate-y-2 drop-shadow-xl`}
+                >
+                  <i className={`${iconClass} text-5xl`}></i>
+                </a>
+              )
+            })}
           </div>
-          {profile.isPro && (
-            <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 text-white">Verified Creator</div>
-          )}
-        </footer>
+
+          {/* Brand Footer */}
+          <footer className="mt-32 pb-16 flex flex-col items-center gap-6">
+            <div className={`flex items-center gap-3 font-black text-3xl tracking-tighter opacity-40 ${theme.textColor}`}>
+              <div className="bg-white/10 p-2 rounded-2xl backdrop-blur-md border border-white/20">
+                <i className="fa-solid fa-bolt"></i>
+              </div>
+              LinkPulse
+            </div>
+            {profile.isPro && (
+              <div className="text-xs font-black uppercase tracking-[0.5em] opacity-30 text-white animate-pulse">VERIFIED CREATOR</div>
+            )}
+          </footer>
+        </div>
       </div>
     </div>
   );
