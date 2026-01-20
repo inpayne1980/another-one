@@ -8,10 +8,9 @@ export interface Link {
   active: boolean;
   clicks: number;
   type: LinkType;
-  price?: string; // For Shop
-  isFeatured?: boolean; // Pulse effect
-  scheduleStart?: string;
-  scheduleEnd?: string;
+  price?: string;
+  isFeatured?: boolean;
+  isHeroVideo?: boolean;
 }
 
 export interface UserProfile {
@@ -21,12 +20,16 @@ export interface UserProfile {
   avatarUrl: string;
   themeId: string;
   isPro: boolean;
+  backgroundType: 'theme' | 'color' | 'image';
+  backgroundColor?: string;
+  backgroundImage?: string;
   socials: {
     instagram?: string;
     twitter?: string;
     youtube?: string;
     linkedin?: string;
     tiktok?: string;
+    facebook?: string;
   };
 }
 
@@ -77,14 +80,25 @@ export const THEMES: Theme[] = [
     secondaryColor: 'text-gray-400'
   },
   {
-    id: 'sunset-dream',
-    name: 'Sunset Dream',
-    background: 'bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500',
-    buttonColor: 'bg-white/90',
-    buttonTextColor: 'text-pink-600',
+    id: 'neon-night',
+    name: 'Neon Night',
+    background: 'bg-black',
+    buttonColor: 'bg-transparent border-2 border-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.5)]',
+    buttonTextColor: 'text-fuchsia-500',
     textColor: 'text-white',
     fontFamily: 'font-sans',
-    buttonRadius: 'rounded-2xl',
-    secondaryColor: 'text-white/80'
+    buttonRadius: 'rounded-xl',
+    secondaryColor: 'text-fuchsia-300'
+  },
+  {
+    id: 'pastel-garden',
+    name: 'Pastel Garden',
+    background: 'bg-gradient-to-tr from-emerald-100 to-teal-200',
+    buttonColor: 'bg-white shadow-sm',
+    buttonTextColor: 'text-emerald-800',
+    textColor: 'text-emerald-900',
+    fontFamily: 'font-sans',
+    buttonRadius: 'rounded-3xl',
+    secondaryColor: 'text-emerald-600'
   }
 ];

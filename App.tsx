@@ -5,6 +5,7 @@ import DashboardLayout from './components/DashboardLayout';
 import Dashboard from './views/Dashboard';
 import Appearance from './views/Appearance';
 import Analytics from './views/Analytics';
+import Settings from './views/Settings';
 import PublicProfile from './views/PublicProfile';
 import LandingPage from './views/LandingPage';
 
@@ -31,6 +32,11 @@ const App: React.FC = () => {
         <Route path="/analytics" element={
           <DashboardLayout username={username}>
             <Analytics />
+          </DashboardLayout>
+        } />
+        <Route path="/settings" element={
+          <DashboardLayout username={username}>
+            <Settings />
           </DashboardLayout>
         } />
         

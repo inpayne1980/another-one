@@ -7,8 +7,35 @@ interface PreviewFrameProps {
   links: Link[];
 }
 
+const getFaviconUrl = (url: string) => {
+  try {
+    const domain = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
+    if (!domain || domain.length < 4) return null;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  } catch {
+    return null;
+  }
+};
+
+const getYouTubeId = (url: string) => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
   const theme = THEMES.find(t => t.id === profile.themeId) || THEMES[0];
+  const activeLinks = links.filter(l => l.active);
+  const heroLinks = activeLinks.filter(l => l.isHeroVideo);
+  const standardLinks = activeLinks.filter(l => !l.isHeroVideo);
+
+  const bgStyle: React.CSSProperties = profile.backgroundType === 'color' 
+    ? { backgroundColor: profile.backgroundColor } 
+    : profile.backgroundType === 'image' 
+    ? { backgroundImage: `url(${profile.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } 
+    : {};
+
+  const bgClassName = profile.backgroundType === 'theme' ? theme.background : '';
 
   return (
     <div className="sticky top-10">
@@ -17,7 +44,10 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-2xl z-20"></div>
         <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-gray-700 rounded-full z-20"></div>
         
-        <div className={`rounded-[2.4rem] overflow-y-auto w-full h-full ${theme.background} flex flex-col items-center p-6 text-center scrollbar-hide`}>
+        <div 
+          className={`rounded-[2.4rem] overflow-y-auto w-full h-full flex flex-col items-center p-6 text-center scrollbar-hide ${bgClassName}`}
+          style={bgStyle}
+        >
           <style>{`
             @keyframes pulse-soft {
               0% { transform: scale(1); }
@@ -37,18 +67,56 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
           </div>
           
           <h2 className={`font-black text-xl mb-1 ${theme.textColor}`}>@{profile.username}</h2>
-          <p className={`text-sm opacity-80 mb-8 px-4 leading-relaxed ${theme.textColor}`}>{profile.bio}</p>
+          <p className={`text-sm opacity-80 mb-6 px-4 leading-relaxed ${theme.textColor}`}>{profile.bio}</p>
 
-          <div className="w-full space-y-4">
-            {links.filter(l => l.active).map(link => (
+          {/* Hero Windows */}
+          {heroLinks.length > 0 && (
+            <div className="w-full space-y-4 mb-6">
+              {heroLinks.map(link => {
+                const ytId = getYouTubeId(link.url);
+                const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&auto=format&fit=crop&q=60`;
+                return (
+                  <div 
+                    key={link.id} 
+                    className={`group w-full aspect-video rounded-3xl overflow-hidden relative shadow-xl border-2 border-white/20 transition-transform active:scale-95`}
+                  >
+                    <img src={thumb} alt={link.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center p-4">
+                      <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mb-2 border border-white/30 group-hover:scale-110 transition-transform">
+                        <i className="fa-solid fa-play text-white ml-1"></i>
+                      </div>
+                      <span className="text-white font-black text-sm drop-shadow-md truncate w-full">{link.title}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Standard Links */}
+          <div className="w-full space-y-3">
+            {standardLinks.map(link => (
               <div 
                 key={link.id} 
                 className={`group w-full py-4 px-5 ${theme.buttonColor} ${theme.buttonTextColor} ${theme.buttonRadius} text-sm font-black shadow-md transition-all cursor-pointer flex items-center justify-between relative overflow-hidden ${link.isFeatured ? 'featured-pulse ring-2 ring-white/50' : 'hover:scale-[1.02]'}`}
               >
                 <div className="flex items-center gap-3">
-                  {link.type === 'shop' && <i className="fa-solid fa-cart-shopping opacity-70"></i>}
-                  {link.type === 'newsletter' && <i className="fa-solid fa-envelope opacity-70"></i>}
-                  {link.type === 'tip' && <i className="fa-solid fa-heart opacity-70"></i>}
+                  {link.type === 'shop' ? (
+                    <i className="fa-solid fa-cart-shopping opacity-70"></i>
+                  ) : link.type === 'newsletter' ? (
+                    <i className="fa-solid fa-envelope opacity-70"></i>
+                  ) : link.type === 'tip' ? (
+                    <i className="fa-solid fa-heart opacity-70"></i>
+                  ) : getFaviconUrl(link.url) ? (
+                    <img 
+                      src={getFaviconUrl(link.url)!} 
+                      className="w-4 h-4 object-contain rounded-sm" 
+                      alt=""
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                  ) : (
+                    <i className="fa-solid fa-link opacity-70"></i>
+                  )}
                   <span className="truncate max-w-[150px]">{link.title}</span>
                 </div>
                 {link.price && <span className="bg-black/10 px-2 py-1 rounded text-[10px] font-bold">{link.price}</span>}
@@ -57,14 +125,16 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
             ))}
           </div>
 
-          <div className="mt-10 mb-6 flex gap-5">
-            {Object.entries(profile.socials).map(([platform, handle]) => (
-              handle && (
+          <div className="mt-10 mb-6 flex gap-5 flex-wrap justify-center">
+            {Object.entries(profile.socials).map(([platform, handle]) => {
+              if (!handle) return null;
+              const iconClass = platform === 'twitter' ? 'fa-brands fa-x-twitter' : `fa-brands fa-${platform}`;
+              return (
                 <div key={platform} className={`${theme.textColor} opacity-60 hover:opacity-100 transition-opacity`}>
-                  <i className={`fa-brands fa-${platform} text-2xl`}></i>
+                  <i className={`${iconClass} text-2xl`}></i>
                 </div>
               )
-            ))}
+            })}
           </div>
           
           <div className={`mt-auto pt-8 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] opacity-40 ${theme.textColor}`}>

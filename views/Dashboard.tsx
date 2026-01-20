@@ -4,12 +4,31 @@ import { Link, UserProfile, LinkType } from '../types';
 import PreviewFrame from '../components/PreviewFrame';
 import { optimizeBio, suggestLinks } from '../services/geminiService';
 
+const getFaviconUrl = (url: string) => {
+  try {
+    const domain = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
+    if (!domain || domain.length < 4) return null;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  } catch {
+    return null;
+  }
+};
+
+const SOCIAL_PRESETS = [
+  { name: 'Instagram', icon: 'fa-instagram', color: 'hover:text-pink-600', url: 'instagram.com/' },
+  { name: 'TikTok', icon: 'fa-tiktok', color: 'hover:text-black', url: 'tiktok.com/@' },
+  { name: 'YouTube', icon: 'fa-youtube', color: 'hover:text-red-600', url: 'youtube.com/@' },
+  { name: 'Facebook', icon: 'fa-facebook', color: 'hover:text-blue-600', url: 'facebook.com/' },
+  { name: 'Twitter', icon: 'fa-x-twitter', color: 'hover:text-zinc-800', url: 'twitter.com/' },
+  { name: 'LinkedIn', icon: 'fa-linkedin', color: 'hover:text-blue-700', url: 'linkedin.com/in/' },
+];
+
 const Dashboard: React.FC = () => {
   const [links, setLinks] = useState<Link[]>(() => {
     const saved = localStorage.getItem('lp_links');
     return saved ? JSON.parse(saved) : [
       { id: '1', title: 'Visit My Portfolio', url: 'https://example.com', active: true, clicks: 120, type: 'standard' },
-      { id: '2', title: 'Buy My New E-Book', url: 'https://gumroad.com', active: true, clicks: 450, type: 'shop', price: '$19.99', isFeatured: true }
+      { id: '2', title: 'Check Out My New Video', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', active: true, clicks: 840, type: 'standard', isHeroVideo: true }
     ];
   });
 
@@ -22,11 +41,15 @@ const Dashboard: React.FC = () => {
       avatarUrl: 'https://picsum.photos/200',
       themeId: 'classic-dark',
       isPro: true,
+      backgroundType: 'theme',
+      backgroundColor: '#4f46e5',
+      backgroundImage: '',
       socials: { twitter: 'alex_tweets', instagram: 'alex_visuals' }
     };
   });
 
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [showCopyToast, setShowCopyToast] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('lp_links', JSON.stringify(links));
@@ -36,11 +59,11 @@ const Dashboard: React.FC = () => {
     localStorage.setItem('lp_profile', JSON.stringify(profile));
   }, [profile]);
 
-  const addLink = (type: LinkType = 'standard') => {
+  const addLink = (type: LinkType = 'standard', preset?: { name: string, url: string }) => {
     const newLink: Link = {
       id: Date.now().toString(),
-      title: type === 'shop' ? 'Product Name' : type === 'tip' ? 'Buy me a coffee' : 'New Link',
-      url: 'https://',
+      title: preset ? preset.name : (type === 'shop' ? 'Product Name' : type === 'tip' ? 'Buy me a coffee' : 'New Link'),
+      url: preset ? `https://${preset.url}` : 'https://',
       active: true,
       clicks: 0,
       type: type,
@@ -50,11 +73,33 @@ const Dashboard: React.FC = () => {
   };
 
   const updateLink = (id: string, updates: Partial<Link>) => {
+    if (updates.isHeroVideo) {
+      const heroCount = links.filter(l => l.isHeroVideo && l.id !== id).length;
+      if (heroCount >= 3) {
+        alert("You can only have up to 3 Hero Windows.");
+        return;
+      }
+    }
     setLinks(links.map(l => l.id === id ? { ...l, ...updates } : l));
   };
 
   const removeLink = (id: string) => {
     setLinks(links.filter(l => l.id !== id));
+  };
+
+  const moveLink = (index: number, direction: 'up' | 'down') => {
+    const newLinks = [...links];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex >= 0 && targetIndex < newLinks.length) {
+      [newLinks[index], newLinks[targetIndex]] = [newLinks[targetIndex], newLinks[index]];
+      setLinks(newLinks);
+    }
+  };
+
+  const copyUrl = () => {
+    navigator.clipboard.writeText(`linkpulse.me/${profile.username}`);
+    setShowCopyToast(true);
+    setTimeout(() => setShowCopyToast(false), 2000);
   };
 
   const handleOptimizeBio = async () => {
@@ -81,7 +126,26 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col lg:flex-row gap-10">
-      <div className="flex-1 space-y-8">
+      <div className="flex-1 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        
+        {/* Header Section */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+             <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+             <h2 className="text-xl font-black text-gray-800">Your Live Pulse</h2>
+          </div>
+          <button 
+            onClick={copyUrl}
+            className="group relative flex items-center gap-2 bg-white border border-gray-100 px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:text-indigo-600 transition-all hover:shadow-md"
+          >
+            <i className="fa-solid fa-share-nodes"></i>
+            Share Link
+            {showCopyToast && (
+              <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white px-3 py-1 rounded-lg text-xs">Copied!</span>
+            )}
+          </button>
+        </div>
+
         {/* Profile Card */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <div className="flex flex-col md:flex-row items-center gap-6">
@@ -97,12 +161,15 @@ const Dashboard: React.FC = () => {
               </label>
             </div>
             <div className="flex-1 w-full">
-              <input 
-                value={profile.displayName}
-                onChange={(e) => setProfile({...profile, displayName: e.target.value})}
-                className="text-2xl font-bold block w-full outline-none focus:ring-2 focus:ring-indigo-100 rounded-lg px-2 -ml-2"
-                placeholder="Display Name"
-              />
+              <div className="flex items-center gap-2">
+                 <input 
+                  value={profile.displayName}
+                  onChange={(e) => setProfile({...profile, displayName: e.target.value})}
+                  className="text-2xl font-bold block w-full outline-none focus:ring-2 focus:ring-indigo-100 rounded-lg px-2 -ml-2"
+                  placeholder="Display Name"
+                />
+                {profile.isPro && <i className="fa-solid fa-circle-check text-indigo-600 text-lg"></i>}
+              </div>
               <div className="relative mt-2">
                 <textarea 
                   value={profile.bio}
@@ -124,46 +191,80 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Specialized Link Creators */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button 
-            onClick={() => addLink('standard')}
-            className="flex-1 min-w-[140px] bg-indigo-600 text-white py-3 rounded-2xl font-bold shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
-          >
-            <i className="fa-solid fa-link"></i> Add Link
-          </button>
-          <button 
-            onClick={() => addLink('shop')}
-            className="flex-1 min-w-[140px] bg-green-600 text-white py-3 rounded-2xl font-bold shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
-          >
-            <i className="fa-solid fa-cart-shopping"></i> Add Shop
-          </button>
-          <button 
-            onClick={() => addLink('newsletter')}
-            className="flex-1 min-w-[140px] bg-purple-600 text-white py-3 rounded-2xl font-bold shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
-          >
-            <i className="fa-solid fa-envelope"></i> Newsletter
-          </button>
-          <button 
-            onClick={handleAISuggestions}
-            disabled={isOptimizing}
-            className="flex-1 min-w-[140px] bg-white border border-gray-100 py-3 rounded-2xl font-bold text-indigo-600 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
-          >
-            <i className="fa-solid fa-wand-sparkles"></i> AI Suggest
-          </button>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <button 
+              onClick={() => addLink('standard')}
+              className="flex-1 min-w-[140px] bg-indigo-600 text-white py-3 rounded-2xl font-bold shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+            >
+              <i className="fa-solid fa-plus"></i> Add Link
+            </button>
+            <button 
+              onClick={() => addLink('shop')}
+              className="flex-1 min-w-[140px] bg-green-600 text-white py-3 rounded-2xl font-bold shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+            >
+              <i className="fa-solid fa-cart-shopping"></i> Add Shop
+            </button>
+            <button 
+              onClick={() => addLink('newsletter')}
+              className="flex-1 min-w-[140px] bg-purple-600 text-white py-3 rounded-2xl font-bold shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+            >
+              <i className="fa-solid fa-envelope"></i> Newsletter
+            </button>
+            <button 
+              onClick={handleAISuggestions}
+              disabled={isOptimizing}
+              className="flex-1 min-w-[140px] bg-white border border-gray-100 py-3 rounded-2xl font-bold text-indigo-600 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
+            >
+              <i className="fa-solid fa-wand-sparkles"></i> AI Suggest
+            </button>
+          </div>
+
+          {/* Quick Add Presets */}
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-4 overflow-x-auto no-scrollbar">
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap">Quick Social:</span>
+            <div className="flex items-center gap-3">
+              {SOCIAL_PRESETS.map((preset) => (
+                <button
+                  key={preset.name}
+                  onClick={() => addLink('standard', { name: preset.name, url: preset.url })}
+                  className={`w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 border border-gray-100 text-gray-400 transition-all hover:scale-110 hover:bg-white hover:shadow-md ${preset.color}`}
+                  title={`Quick Add ${preset.name}`}
+                >
+                  <i className={`fa-brands ${preset.icon} text-lg`}></i>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Links List */}
         <div className="space-y-4">
           {links.length === 0 && (
             <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-              <i className="fa-solid fa-link-slash text-4xl text-gray-200 mb-4 block"></i>
-              <p className="text-gray-400 font-medium">No links yet. Start by adding one above!</p>
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                 <i className="fa-solid fa-link-slash text-2xl text-gray-200"></i>
+              </div>
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No links yet. Start by adding one above!</p>
             </div>
           )}
-          {links.map((link) => (
-            <div key={link.id} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex gap-4 group hover:border-indigo-200 transition-all">
-              <div className="flex flex-col items-center justify-center text-gray-300 px-2">
-                <i className="fa-solid fa-grip-vertical cursor-move"></i>
+          {links.map((link, index) => (
+            <div key={link.id} className={`bg-white p-5 rounded-3xl shadow-sm border transition-all flex gap-4 group ${link.isHeroVideo ? 'border-indigo-600 ring-2 ring-indigo-50' : 'border-gray-100 hover:border-indigo-200'}`}>
+              <div className="flex flex-col items-center justify-center gap-2 px-2">
+                <button 
+                  onClick={() => moveLink(index, 'up')} 
+                  disabled={index === 0}
+                  className="text-gray-300 hover:text-indigo-400 disabled:opacity-30 p-1"
+                >
+                  <i className="fa-solid fa-caret-up text-xl"></i>
+                </button>
+                <button 
+                  onClick={() => moveLink(index, 'down')} 
+                  disabled={index === links.length - 1}
+                  className="text-gray-300 hover:text-indigo-400 disabled:opacity-30 p-1"
+                >
+                  <i className="fa-solid fa-caret-down text-xl"></i>
+                </button>
               </div>
               
               <div className="flex-1 space-y-3">
@@ -171,11 +272,11 @@ const Dashboard: React.FC = () => {
                   <div className="flex items-center gap-3 w-full">
                     {link.type === 'shop' && <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider">Shop</span>}
                     {link.type === 'newsletter' && <span className="text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider">Newsletter</span>}
-                    {link.type === 'tip' && <span className="text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider">Tip</span>}
+                    {link.isHeroVideo && <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider"><i className="fa-solid fa-video mr-1"></i> Hero</span>}
                     <input 
                       value={link.title}
                       onChange={(e) => updateLink(link.id, { title: e.target.value })}
-                      className="font-bold text-gray-800 text-lg w-full outline-none focus:text-indigo-600"
+                      className="font-bold text-gray-800 text-lg w-full outline-none focus:text-indigo-600 transition-colors"
                       placeholder="Title"
                     />
                   </div>
@@ -193,8 +294,19 @@ const Dashboard: React.FC = () => {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div className="flex-1 flex items-center gap-2 text-gray-400 w-full">
-                    <i className="fa-solid fa-link text-xs"></i>
+                  <div className="flex-1 flex items-center gap-3 text-gray-400 w-full">
+                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 border border-gray-100">
+                      {getFaviconUrl(link.url) ? (
+                        <img 
+                          src={getFaviconUrl(link.url)!} 
+                          alt="favicon" 
+                          className="w-5 h-5 object-contain"
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
+                      ) : (
+                        <i className="fa-solid fa-link text-xs"></i>
+                      )}
+                    </div>
                     <input 
                       value={link.url}
                       onChange={(e) => updateLink(link.id, { url: e.target.value })}
@@ -226,7 +338,14 @@ const Dashboard: React.FC = () => {
                       className={`flex items-center gap-1 transition-colors ${link.isFeatured ? 'text-indigo-600' : 'hover:text-gray-600'}`}
                     >
                       <i className="fa-solid fa-star"></i>
-                      Featured
+                      Feature
+                    </button>
+                    <button 
+                      onClick={() => updateLink(link.id, { isHeroVideo: !link.isHeroVideo })}
+                      className={`flex items-center gap-1 transition-colors ${link.isHeroVideo ? 'text-indigo-600' : 'hover:text-gray-600'}`}
+                    >
+                      <i className="fa-solid fa-video"></i>
+                      Hero Window
                     </button>
                   </div>
                   <button 
@@ -245,6 +364,16 @@ const Dashboard: React.FC = () => {
       <div className="lg:w-[350px]">
         <PreviewFrame profile={profile} links={links} />
       </div>
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slide-in-from-bottom { from { transform: translateY(1rem); } to { transform: translateY(0); } }
+        .animate-in { animation-fill-mode: both; }
+        .fade-in { animation-name: fade-in; }
+        .slide-in-from-bottom-4 { animation-name: slide-in-from-bottom; }
+      `}</style>
     </div>
   );
 };

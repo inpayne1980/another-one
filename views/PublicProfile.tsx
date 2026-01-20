@@ -3,6 +3,22 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { UserProfile, Link, THEMES } from '../types';
 
+const getFaviconUrl = (url: string) => {
+  try {
+    const domain = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
+    if (!domain || domain.length < 4) return null;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  } catch {
+    return null;
+  }
+};
+
+const getYouTubeId = (url: string) => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -35,6 +51,8 @@ const PublicProfile: React.FC = () => {
   );
 
   const theme = THEMES.find(t => t.id === profile.themeId) || THEMES[0];
+  const heroLinks = links.filter(l => l.isHeroVideo);
+  const standardLinks = links.filter(l => !l.isHeroVideo);
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,8 +63,16 @@ const PublicProfile: React.FC = () => {
     }
   };
 
+  const bgStyle: React.CSSProperties = profile.backgroundType === 'color' 
+    ? { backgroundColor: profile.backgroundColor } 
+    : profile.backgroundType === 'image' 
+    ? { backgroundImage: `url(${profile.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } 
+    : {};
+
+  const bgClassName = profile.backgroundType === 'theme' ? theme.background : '';
+
   return (
-    <div className={`min-h-screen ${theme.background} flex flex-col items-center p-6 sm:p-12 transition-colors duration-1000`}>
+    <div className={`min-h-screen flex flex-col items-center p-6 sm:p-12 transition-colors duration-1000 ${bgClassName}`} style={bgStyle}>
       <style>{`
         @keyframes pulse-custom {
           0% { transform: scale(1); }
@@ -74,9 +100,36 @@ const PublicProfile: React.FC = () => {
           {profile.bio}
         </p>
 
-        {/* Links Grid */}
+        {/* Hero Windows Grid */}
+        {heroLinks.length > 0 && (
+          <div className={`w-full grid gap-6 mb-10 ${heroLinks.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+            {heroLinks.map(link => {
+              const ytId = getYouTubeId(link.url);
+              const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&auto=format&fit=crop&q=80`;
+              return (
+                <a 
+                  key={link.id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group relative aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-2 border-white/20 transform transition-all hover:scale-[1.02] active:scale-[0.98] ${heroLinks.length === 1 ? 'md:max-w-xl mx-auto w-full' : ''}`}
+                >
+                  <img src={thumb} alt={link.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
+                     <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center mb-4 group-hover:bg-white/30 transition-all mx-auto">
+                        <i className="fa-solid fa-play text-white text-xl ml-1"></i>
+                     </div>
+                     <h3 className="text-white font-black text-xl text-center drop-shadow-lg">{link.title}</h3>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Standard Links List */}
         <div className="w-full space-y-5">
-          {links.map((link) => {
+          {standardLinks.map((link) => {
             if (link.type === 'newsletter') {
               return (
                 <div key={link.id} className={`w-full p-6 ${theme.buttonColor} ${theme.buttonTextColor} ${theme.buttonRadius} shadow-xl backdrop-blur-lg`}>
@@ -102,6 +155,8 @@ const PublicProfile: React.FC = () => {
               );
             }
 
+            const favicon = getFaviconUrl(link.url);
+
             return (
               <a 
                 key={link.id} 
@@ -113,6 +168,15 @@ const PublicProfile: React.FC = () => {
                 <div className="flex items-center gap-4">
                   {link.type === 'shop' && <i className="fa-solid fa-bag-shopping opacity-60"></i>}
                   {link.type === 'tip' && <i className="fa-solid fa-mug-hot opacity-60"></i>}
+                  {link.type === 'standard' && favicon && (
+                    <img 
+                      src={favicon} 
+                      className="w-6 h-6 object-contain rounded-md" 
+                      alt=""
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                  )}
+                  {link.type === 'standard' && !favicon && <i className="fa-solid fa-link opacity-60 text-lg"></i>}
                   <span>{link.title}</span>
                 </div>
                 {link.price && <span className="bg-black/10 px-3 py-1 rounded-lg text-sm font-black">{link.price}</span>}
@@ -124,19 +188,21 @@ const PublicProfile: React.FC = () => {
 
         {/* Social Icons */}
         <div className="mt-16 flex flex-wrap justify-center gap-8">
-          {Object.entries(profile.socials).map(([platform, handle]) => (
-            handle && (
+          {Object.entries(profile.socials).map(([platform, handle]) => {
+            if (!handle) return null;
+            const iconClass = platform === 'twitter' ? 'fa-brands fa-x-twitter' : `fa-brands fa-${platform}`;
+            return (
               <a 
                 key={platform} 
-                href={`https://${platform}.com/${handle}`}
+                href={`https://${platform === 'twitter' ? 'x' : platform}.com/${handle}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`${theme.textColor} opacity-60 hover:opacity-100 transition-all transform hover:scale-125 hover:-translate-y-1`}
               >
-                <i className={`fa-brands fa-${platform} text-4xl`}></i>
+                <i className={`${iconClass} text-4xl`}></i>
               </a>
             )
-          ))}
+          })}
         </div>
 
         {/* Brand Footer */}
