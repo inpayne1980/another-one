@@ -13,7 +13,7 @@ const LandingPage: React.FC = () => {
           <div className="bg-indigo-600 p-2 rounded-xl">
             <i className="fa-solid fa-bolt text-white text-xl"></i>
           </div>
-          <span className="text-2xl font-black tracking-tighter">LinkPulse</span>
+          <span className="text-2xl font-black tracking-tighter">vendo.bio</span>
         </div>
         <div className="flex gap-4">
           <button onClick={() => navigate('/')} className="px-6 py-2 font-bold hover:text-indigo-600 transition-colors">Login</button>
@@ -113,7 +113,7 @@ const LandingPage: React.FC = () => {
             <div className="bg-indigo-600 p-1 rounded-lg">
               <i className="fa-solid fa-bolt text-white text-lg"></i>
             </div>
-            <span className="text-xl font-black tracking-tighter">LinkPulse</span>
+            <span className="text-xl font-black tracking-tighter">vendo.bio</span>
           </div>
           <div className="flex gap-8 text-sm font-medium text-gray-400">
             <a href="#" className="hover:text-white">Privacy</a>
@@ -122,7 +122,7 @@ const LandingPage: React.FC = () => {
             <a href="#" className="hover:text-white">API</a>
           </div>
           <div className="text-gray-500 text-sm">
-            © 2025 LinkPulse Inc.
+            © 2025 vendo.bio Inc.
           </div>
         </div>
       </footer>

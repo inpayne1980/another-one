@@ -1,5 +1,5 @@
 {
-  "name": "LinkPulse SaaS",
+  "name": "vendo.bio",
   "description": "A comprehensive link-in-bio SaaS platform with AI-powered profile optimization, dynamic themes, and real-time analytics.",
   "requestFramePermissions": [
     "camera"

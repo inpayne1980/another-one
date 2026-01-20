@@ -101,7 +101,7 @@ const Dashboard: React.FC = () => {
   };
 
   const copyUrl = () => {
-    navigator.clipboard.writeText(`linkpulse.me/${profile.username}`);
+    navigator.clipboard.writeText(`vendo.bio/${profile.username}`);
     setShowCopyToast(true);
     setTimeout(() => setShowCopyToast(false), 2000);
   };

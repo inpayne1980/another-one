@@ -257,7 +257,7 @@ const PublicProfile: React.FC = () => {
               <div className="bg-white/10 p-2 rounded-2xl backdrop-blur-md border border-white/20">
                 <i className="fa-solid fa-bolt"></i>
               </div>
-              LinkPulse
+              vendo.bio
             </div>
             {profile.isPro && (
               <div className="text-xs font-black uppercase tracking-[0.5em] opacity-30 text-white animate-pulse">VERIFIED CREATOR</div>

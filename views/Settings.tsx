@@ -37,7 +37,7 @@ const Settings: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `linkpulse_backup_${profile.username}.json`;
+    a.download = `vendo.bio_backup_${profile.username}.json`;
     a.click();
   };
 
@@ -59,7 +59,7 @@ const Settings: React.FC = () => {
             <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Username</label>
               <div className="flex items-center gap-2">
-                <span className="text-gray-400 font-bold">linkpulse.me/</span>
+                <span className="text-gray-400 font-bold">vendo.bio/</span>
                 <input 
                   value={profile.username}
                   onChange={(e) => updateProfile({ username: e.target.value })}
@@ -75,7 +75,7 @@ const Settings: React.FC = () => {
                       <i className="fa-solid fa-crown"></i>
                    </div>
                    <div>
-                      <p className="font-bold">{profile.isPro ? 'LinkPulse PRO' : 'Free Starter'}</p>
+                      <p className="font-bold">{profile.isPro ? 'vendo.bio PRO' : 'Free Starter'}</p>
                       <p className="text-xs text-gray-500">{profile.isPro ? 'All features unlocked' : 'Limited features'}</p>
                    </div>
                 </div>
@@ -112,7 +112,7 @@ const Settings: React.FC = () => {
       </div>
 
       <div className="text-center pt-8">
-        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">LinkPulse SaaS v1.2.4-stable</p>
+        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">vendo.bio SaaS v1.2.4-stable</p>
       </div>
     </div>
   );

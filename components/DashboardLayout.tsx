@@ -23,7 +23,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, username })
           <div className="bg-indigo-600 p-2 rounded-lg">
             <i className="fa-solid fa-bolt text-white text-xl"></i>
           </div>
-          <span className="text-xl font-bold tracking-tight text-gray-900">LinkPulse</span>
+          <span className="text-xl font-bold tracking-tight text-gray-900">vendo.bio</span>
         </div>
 
         <nav className="flex-1 space-y-1">
@@ -46,7 +46,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, username })
         <div className="mt-auto p-4 bg-gray-50 rounded-2xl border border-gray-200">
           <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wider">Your Live Link</p>
           <div className="flex items-center justify-between gap-2 overflow-hidden">
-            <span className="text-sm font-semibold truncate text-indigo-600">linkpulse.me/{username}</span>
+            <span className="text-sm font-semibold truncate text-indigo-600">vendo.bio/{username}</span>
             <button className="text-gray-400 hover:text-indigo-600 transition-colors">
               <i className="fa-solid fa-copy"></i>
             </button>

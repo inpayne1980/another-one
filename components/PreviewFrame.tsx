@@ -169,7 +169,7 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
             
             <div className={`mt-auto pt-8 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.3em] opacity-40 ${theme.textColor}`}>
                <i className="fa-solid fa-bolt text-xs"></i>
-               LinkPulse PRO
+               vendo.bio PRO
             </div>
           </div>
         </div>
