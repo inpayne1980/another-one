@@ -11,6 +11,7 @@ export interface Link {
   price?: string;
   isFeatured?: boolean;
   isHeroVideo?: boolean;
+  isNSFW?: boolean; // New: Flag for sensitive/adult content
 }
 
 export interface UserProfile {
@@ -26,7 +27,7 @@ export interface UserProfile {
   backgroundBlur?: number;
   backgroundOpacity?: number;
   backgroundGrayscale?: boolean;
-  backgroundParallax?: boolean; // New: Toggle for the motion parallax effect
+  backgroundParallax?: boolean;
   socials: {
     instagram?: string;
     twitter?: string;

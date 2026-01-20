@@ -26,6 +26,7 @@ const PublicProfile: React.FC = () => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [revealedNsfw, setRevealedNsfw] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const savedProfile = localStorage.getItem('lp_profile');
@@ -75,6 +76,10 @@ const PublicProfile: React.FC = () => {
       setTimeout(() => setSubscribed(false), 3000);
       setEmail('');
     }
+  };
+
+  const toggleNsfw = (id: string) => {
+    setRevealedNsfw(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   // Parallax logic: translate from 0 to -10% of the image height
@@ -152,22 +157,54 @@ const PublicProfile: React.FC = () => {
               {heroLinks.map(link => {
                 const ytId = getYouTubeId(link.url);
                 const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&auto=format&fit=crop&q=80`;
+                const isRevealed = revealedNsfw[link.id];
+                const showBlur = link.isNSFW && !isRevealed;
+
                 return (
-                  <a 
+                  <div 
                     key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className={`group relative aspect-video rounded-[2.5rem] overflow-hidden shadow-2xl border-2 border-white/20 transform transition-all hover:scale-[1.02] active:scale-[0.98] ${heroLinks.length === 1 ? 'md:max-w-xl mx-auto w-full' : ''}`}
                   >
-                    <img src={thumb} alt={link.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
-                       <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-2xl border border-white/30 flex items-center justify-center mb-4 group-hover:bg-white/40 transition-all mx-auto">
-                          <i className="fa-solid fa-play text-white text-xl ml-1"></i>
-                       </div>
-                       <h3 className="text-white font-black text-2xl text-center drop-shadow-2xl">{link.title}</h3>
-                    </div>
-                  </a>
+                    <img 
+                      src={thumb} 
+                      alt={link.title} 
+                      className={`w-full h-full object-cover transition-all duration-1000 ${showBlur ? 'blur-[40px] grayscale brightness-50' : 'group-hover:scale-110'}`} 
+                    />
+                    
+                    {showBlur ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/20">
+                         <div className="bg-red-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full mb-4 shadow-lg uppercase tracking-widest flex items-center gap-2">
+                           <i className="fa-solid fa-triangle-exclamation"></i> Sensitive Content
+                         </div>
+                         <h3 className="text-white font-bold text-lg mb-6 text-center drop-shadow-lg">This content may be sensitive.</h3>
+                         <button 
+                          onClick={() => toggleNsfw(link.id)}
+                          className="bg-white text-black px-8 py-3 rounded-2xl font-black text-sm shadow-2xl hover:bg-gray-100 active:scale-95 transition-all flex items-center gap-2"
+                         >
+                           <i className="fa-solid fa-eye"></i> Show Content
+                         </button>
+                      </div>
+                    ) : (
+                      <a 
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8"
+                      >
+                         <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-2xl border border-white/30 flex items-center justify-center mb-4 group-hover:bg-white/40 transition-all mx-auto">
+                            <i className="fa-solid fa-play text-white text-xl ml-1"></i>
+                         </div>
+                         <div className="flex flex-col items-center gap-1">
+                           <h3 className="text-white font-black text-2xl text-center drop-shadow-2xl">{link.title}</h3>
+                           {link.isNSFW && (
+                             <span className="text-[10px] text-white/60 font-black uppercase tracking-widest flex items-center gap-1">
+                               <i className="fa-solid fa-eye text-[8px]"></i> Unlocked NSFW Content
+                             </span>
+                           )}
+                         </div>
+                      </a>
+                    )}
+                  </div>
                 );
               })}
             </div>

@@ -111,12 +111,26 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
                       key={link.id} 
                       className={`group w-full aspect-video rounded-[1.5rem] overflow-hidden relative shadow-2xl border-2 border-white/20 transition-transform active:scale-95`}
                     >
-                      <img src={thumb} alt={link.title} className="w-full h-full object-cover" />
+                      <img 
+                        src={thumb} 
+                        alt={link.title} 
+                        className={`w-full h-full object-cover transition-all duration-500 ${link.isNSFW ? 'blur-xl grayscale' : ''}`} 
+                      />
                       <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center p-4">
-                        <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mb-1 border border-white/30 group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-play text-white text-xs ml-1"></i>
-                        </div>
-                        <span className="text-white font-black text-[10px] uppercase tracking-wider truncate w-full">{link.title}</span>
+                        {link.isNSFW ? (
+                          <div className="flex flex-col items-center">
+                            <div className="bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full mb-1 uppercase tracking-tighter">NSFW Warning</div>
+                            <i className="fa-solid fa-eye-slash text-white text-lg mb-1 opacity-50"></i>
+                            <span className="text-white font-black text-[9px] uppercase tracking-wider">Sensitive Content</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mb-1 border border-white/30 group-hover:scale-110 transition-transform">
+                              <i className="fa-solid fa-play text-white text-xs ml-1"></i>
+                            </div>
+                            <span className="text-white font-black text-[10px] uppercase tracking-wider truncate w-full">{link.title}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   );

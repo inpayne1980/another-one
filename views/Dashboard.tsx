@@ -54,6 +54,7 @@ const Dashboard: React.FC = () => {
 
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [showCopyToast, setShowCopyToast] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('lp_links', JSON.stringify(links));
@@ -100,8 +101,10 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const shareUrl = `${window.location.origin}/#/p/${profile.username}`;
+
   const copyUrl = () => {
-    navigator.clipboard.writeText(`vendo.bio/${profile.username}`);
+    navigator.clipboard.writeText(shareUrl);
     setShowCopyToast(true);
     setTimeout(() => setShowCopyToast(false), 2000);
   };
@@ -128,6 +131,22 @@ const Dashboard: React.FC = () => {
     setIsOptimizing(false);
   };
 
+  const downloadQRCode = () => {
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shareUrl)}`;
+    fetch(qrUrl)
+      .then(response => response.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vendo-bio-${profile.username}-qr.png`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      });
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-10">
       <div className="flex-1 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -139,14 +158,11 @@ const Dashboard: React.FC = () => {
              <h2 className="text-xl font-black text-gray-800">Your Live Pulse</h2>
           </div>
           <button 
-            onClick={copyUrl}
+            onClick={() => setIsShareModalOpen(true)}
             className="group relative flex items-center gap-2 bg-white border border-gray-100 px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:text-indigo-600 transition-all hover:shadow-md"
           >
             <i className="fa-solid fa-share-nodes"></i>
-            Share Link
-            {showCopyToast && (
-              <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white px-3 py-1 rounded-lg text-xs">Copied!</span>
-            )}
+            Share Page
           </button>
         </div>
 
@@ -351,6 +367,15 @@ const Dashboard: React.FC = () => {
                       <i className="fa-solid fa-video"></i>
                       Hero Window
                     </button>
+                    {link.isHeroVideo && (
+                      <button 
+                        onClick={() => updateLink(link.id, { isNSFW: !link.isNSFW })}
+                        className={`flex items-center gap-1 transition-colors ${link.isNSFW ? 'text-red-500' : 'hover:text-gray-600'}`}
+                      >
+                        <i className={`fa-solid ${link.isNSFW ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        NSFW
+                      </button>
+                    )}
                   </div>
                   <button 
                     onClick={() => removeLink(link.id)}
@@ -369,14 +394,87 @@ const Dashboard: React.FC = () => {
         <PreviewFrame profile={profile} links={links} />
       </div>
 
+      {/* Share & QR Modal */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 text-center">
+              <div className="flex justify-between items-start mb-6">
+                 <div className="text-left">
+                    <h3 className="text-2xl font-black text-gray-900">Share your Vendo</h3>
+                    <p className="text-gray-400 text-sm font-medium">Grow your audience everywhere.</p>
+                 </div>
+                 <button 
+                    onClick={() => setIsShareModalOpen(false)}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <i className="fa-solid fa-xmark text-gray-400"></i>
+                 </button>
+              </div>
+
+              <div className="bg-gray-50 p-6 rounded-[2rem] mb-8 flex flex-col items-center gap-6 border border-gray-100">
+                <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 transition-transform hover:scale-105">
+                   <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`} 
+                    alt="QR Code" 
+                    className="w-40 h-40"
+                   />
+                </div>
+                <button 
+                  onClick={downloadQRCode}
+                  className="flex items-center gap-2 text-indigo-600 font-bold text-sm hover:underline"
+                >
+                  <i className="fa-solid fa-download"></i>
+                  Download high-res QR
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                 <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 p-2 rounded-2xl">
+                    <span className="flex-1 text-left px-4 font-bold text-sm text-gray-600 truncate">{shareUrl}</span>
+                    <button 
+                      onClick={copyUrl}
+                      className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-xs shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                    >
+                      <i className={`fa-solid ${showCopyToast ? 'fa-check' : 'fa-copy'}`}></i>
+                      {showCopyToast ? 'Copied!' : 'Copy'}
+                    </button>
+                 </div>
+                 
+                 <div className="grid grid-cols-4 gap-3">
+                    {[
+                      { icon: 'fa-twitter', label: 'Twitter', color: 'bg-[#1DA1F2]', url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}` },
+                      { icon: 'fa-whatsapp', label: 'WhatsApp', color: 'bg-[#25D366]', url: `whatsapp://send?text=${encodeURIComponent(shareUrl)}` },
+                      { icon: 'fa-linkedin-in', label: 'LinkedIn', color: 'bg-[#0077B5]', url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}` },
+                      { icon: 'fa-facebook-f', label: 'Facebook', color: 'bg-[#4267B2]', url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}` }
+                    ].map((btn) => (
+                      <a 
+                        key={btn.label}
+                        href={btn.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`${btn.color} text-white w-full h-12 flex items-center justify-center rounded-2xl hover:scale-110 transition-transform shadow-md`}
+                      >
+                        <i className={`fa-brands ${btn.icon} text-lg`}></i>
+                      </a>
+                    ))}
+                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slide-in-from-bottom { from { transform: translateY(1rem); } to { transform: translateY(0); } }
+        @keyframes zoom-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .animate-in { animation-fill-mode: both; }
         .fade-in { animation-name: fade-in; }
         .slide-in-from-bottom-4 { animation-name: slide-in-from-bottom; }
+        .zoom-in-95 { animation-name: zoom-in; }
       `}</style>
     </div>
   );
