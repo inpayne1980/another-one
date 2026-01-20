@@ -23,9 +23,10 @@ export interface UserProfile {
   backgroundType: 'theme' | 'color' | 'image';
   backgroundColor?: string;
   backgroundImage?: string;
-  backgroundBlur?: number;       // New: for HD clarity management
-  backgroundOpacity?: number;    // New: for text contrast
-  backgroundGrayscale?: boolean; // New: for aesthetic control
+  backgroundBlur?: number;
+  backgroundOpacity?: number;
+  backgroundGrayscale?: boolean;
+  backgroundParallax?: boolean; // New: Toggle for the motion parallax effect
   socials: {
     instagram?: string;
     twitter?: string;

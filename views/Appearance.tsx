@@ -30,6 +30,7 @@ const Appearance: React.FC = () => {
       backgroundBlur: 0,
       backgroundOpacity: 0.4,
       backgroundGrayscale: false,
+      backgroundParallax: true,
       socials: { twitter: 'alex_tweets', instagram: 'alex_visuals' }
     };
   });
@@ -162,22 +163,45 @@ const Appearance: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                   <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                         <i className="fa-solid fa-moon text-indigo-600"></i>
-                      </div>
-                      <span className="text-sm font-bold text-gray-700">Monochrome Filter</span>
-                   </div>
-                   <label className="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={profile.backgroundGrayscale || false} 
-                        onChange={(e) => setProfile({...profile, backgroundGrayscale: e.target.checked})}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                    </label>
+                <div className="flex flex-col gap-4 pt-4 border-t border-gray-50">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                       <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                             <i className="fa-solid fa-moon text-indigo-600"></i>
+                          </div>
+                          <span className="text-sm font-bold text-gray-700">Monochrome Filter</span>
+                       </div>
+                       <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={profile.backgroundGrayscale || false} 
+                            onChange={(e) => setProfile({...profile, backgroundGrayscale: e.target.checked})}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                        </label>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                       <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                             <i className="fa-solid fa-arrows-up-down text-indigo-600"></i>
+                          </div>
+                          <div>
+                             <span className="text-sm font-bold text-gray-700 block">Motion Parallax</span>
+                             <span className="text-[10px] text-gray-400 font-medium">Background shifts on scroll</span>
+                          </div>
+                       </div>
+                       <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={profile.backgroundParallax || false} 
+                            onChange={(e) => setProfile({...profile, backgroundParallax: e.target.checked})}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                        </label>
+                    </div>
                 </div>
               </div>
             )}

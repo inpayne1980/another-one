@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { UserProfile, Link, THEMES } from '../types';
 
@@ -25,6 +25,7 @@ const PublicProfile: React.FC = () => {
   const [links, setLinks] = useState<Link[]>([]);
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     const savedProfile = localStorage.getItem('lp_profile');
@@ -38,6 +39,19 @@ const PublicProfile: React.FC = () => {
       setLinks(JSON.parse(savedLinks).filter((l: Link) => l.active));
     }
   }, [username]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY;
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (maxScroll > 0) {
+        setScrollProgress(scrolled / maxScroll);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [profile]);
 
   if (!profile) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -63,32 +77,41 @@ const PublicProfile: React.FC = () => {
     }
   };
 
+  // Parallax logic: translate from 0 to -10% of the image height
+  const parallaxTransform = profile.backgroundParallax 
+    ? `translateY(${-scrollProgress * 5}%)` 
+    : 'none';
+
   const bgStyle: React.CSSProperties = profile.backgroundType === 'color' 
     ? { backgroundColor: profile.backgroundColor } 
     : profile.backgroundType === 'image' 
     ? { 
         backgroundImage: `url(${profile.backgroundImage})`, 
         backgroundSize: 'cover', 
-        backgroundPosition: 'center', 
-        backgroundAttachment: 'fixed',
-        filter: `${profile.backgroundGrayscale ? 'grayscale(1)' : ''} blur(${profile.backgroundBlur || 0}px)`
+        backgroundPosition: 'center',
+        // Increased height to allow for parallax room
+        height: profile.backgroundParallax ? '115vh' : '100vh',
+        top: profile.backgroundParallax ? '-5vh' : '0',
+        filter: `${profile.backgroundGrayscale ? 'grayscale(1)' : ''} blur(${profile.backgroundBlur || 0}px)`,
+        transform: parallaxTransform,
+        willChange: 'transform'
       } 
     : {};
 
   const bgClassName = profile.backgroundType === 'theme' ? theme.background : '';
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden">
-      {/* Background Layer */}
+    <div className="relative min-h-screen w-full overflow-x-hidden">
+      {/* Background Layer (Parallax Container) */}
       <div 
-        className={`fixed inset-0 transition-all duration-1000 ${bgClassName}`} 
+        className={`fixed inset-0 w-full transition-all duration-1000 ease-out z-0 ${bgClassName}`} 
         style={bgStyle}
       />
       
-      {/* HD Dimmer Overlay */}
+      {/* HD Dimmer Overlay (Stays static) */}
       {profile.backgroundType === 'image' && (
         <div 
-          className="fixed inset-0 transition-opacity duration-1000 z-0 pointer-events-none"
+          className="fixed inset-0 transition-opacity duration-1000 z-[1] pointer-events-none"
           style={{ backgroundColor: `rgba(0,0,0,${profile.backgroundOpacity || 0})` }}
         />
       )}

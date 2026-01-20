@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserProfile, Link, THEMES } from '../types';
 
 interface PreviewFrameProps {
@@ -28,7 +28,9 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
   const activeLinks = links.filter(l => l.active);
   const heroLinks = activeLinks.filter(l => l.isHeroVideo);
   const standardLinks = activeLinks.filter(l => !l.isHeroVideo);
+  const [localScroll, setLocalScroll] = useState(0);
 
+  // Simple simulation of parallax in preview when items are many
   const bgStyle: React.CSSProperties = profile.backgroundType === 'color' 
     ? { backgroundColor: profile.backgroundColor } 
     : profile.backgroundType === 'image' 
@@ -36,7 +38,9 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
         backgroundImage: `url(${profile.backgroundImage})`, 
         backgroundSize: 'cover', 
         backgroundPosition: 'center',
-        filter: `${profile.backgroundGrayscale ? 'grayscale(1)' : ''} blur(${profile.backgroundBlur || 0}px)`
+        filter: `${profile.backgroundGrayscale ? 'grayscale(1)' : ''} blur(${profile.backgroundBlur || 0}px)`,
+        height: profile.backgroundParallax ? '110%' : '100%',
+        top: profile.backgroundParallax ? '-5%' : '0'
       } 
     : {};
 
@@ -61,13 +65,20 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
           {/* HD Overlay Layer */}
           {profile.backgroundType === 'image' && (
             <div 
-              className="absolute inset-0 transition-opacity duration-700 pointer-events-none"
+              className="absolute inset-0 transition-opacity duration-700 pointer-events-none z-[1]"
               style={{ backgroundColor: `rgba(0,0,0,${profile.backgroundOpacity || 0})` }}
             />
           )}
 
           {/* Content Layer */}
-          <div className="relative z-10 w-full h-full overflow-y-auto p-6 flex flex-col items-center text-center scrollbar-hide">
+          <div 
+            className="relative z-10 w-full h-full overflow-y-auto p-6 flex flex-col items-center text-center scrollbar-hide"
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const progress = el.scrollTop / (el.scrollHeight - el.clientHeight);
+              setLocalScroll(progress);
+            }}
+          >
             <style>{`
               @keyframes pulse-soft {
                 0% { transform: scale(1); }
@@ -76,7 +87,6 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
               }
               .featured-pulse { animation: pulse-soft 2s infinite ease-in-out; }
               .scrollbar-hide::-webkit-scrollbar { display: none; }
-              .glass-card { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); }
             `}</style>
 
             <div className="mt-10 mb-4">

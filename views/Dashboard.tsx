@@ -44,6 +44,10 @@ const Dashboard: React.FC = () => {
       backgroundType: 'theme',
       backgroundColor: '#4f46e5',
       backgroundImage: '',
+      backgroundBlur: 0,
+      backgroundOpacity: 0.4,
+      backgroundGrayscale: false,
+      backgroundParallax: true,
       socials: { twitter: 'alex_tweets', instagram: 'alex_visuals' }
     };
   });
