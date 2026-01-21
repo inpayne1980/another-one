@@ -46,6 +46,40 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
 
   const bgClassName = profile.backgroundType === 'theme' ? theme.background : '';
 
+  const SocialHub = () => {
+    const activeSocials = Object.entries(profile.socials).filter(([_, h]) => !!h);
+    if (activeSocials.length === 0) return null;
+
+    if (profile.socialsDisplay === 'buttons') {
+      return (
+        <div className="w-full space-y-2 mb-6">
+          {activeSocials.map(([platform, handle]) => (
+            <div 
+              key={platform} 
+              className={`w-full py-3 px-4 rounded-xl flex items-center justify-center gap-3 text-xs font-bold backdrop-blur-md border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor} opacity-90`}
+            >
+              <i className={`fa-brands fa-${platform === 'twitter' ? 'x-twitter' : platform}`}></i>
+              <span className="capitalize">{platform}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-4 mb-6 flex gap-4 flex-wrap justify-center">
+        {activeSocials.map(([platform, handle]) => {
+          const iconClass = platform === 'twitter' ? 'fa-brands fa-x-twitter' : `fa-brands fa-${platform}`;
+          return (
+            <div key={platform} className={`${theme.textColor} opacity-60 hover:opacity-100 transition-opacity drop-shadow-md`}>
+              <i className={`${iconClass} text-xl`}></i>
+            </div>
+          )
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="sticky top-10">
       <div className="relative mx-auto border-gray-800 bg-gray-800 border-[12px] rounded-[3rem] h-[650px] w-[320px] shadow-2xl overflow-hidden">
@@ -98,7 +132,10 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
             </div>
             
             <h2 className={`font-black text-xl mb-1 drop-shadow-sm ${theme.textColor}`}>@{profile.username}</h2>
-            <p className={`text-sm opacity-80 mb-6 px-4 leading-relaxed font-medium drop-shadow-sm ${theme.textColor}`}>{profile.bio}</p>
+            <p className={`text-sm opacity-80 mb-2 px-4 leading-relaxed font-medium drop-shadow-sm ${theme.textColor}`}>{profile.bio}</p>
+
+            {/* Top Socials */}
+            {profile.socialsPosition === 'top' && <SocialHub />}
 
             {/* Hero Windows */}
             {heroLinks.length > 0 && (
@@ -169,17 +206,8 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
               ))}
             </div>
 
-            <div className="mt-10 mb-6 flex gap-4 flex-wrap justify-center">
-              {Object.entries(profile.socials).map(([platform, handle]) => {
-                if (!handle) return null;
-                const iconClass = platform === 'twitter' ? 'fa-brands fa-x-twitter' : `fa-brands fa-${platform}`;
-                return (
-                  <div key={platform} className={`${theme.textColor} opacity-60 hover:opacity-100 transition-opacity drop-shadow-md`}>
-                    <i className={`${iconClass} text-xl`}></i>
-                  </div>
-                )
-              })}
-            </div>
+            {/* Bottom Socials */}
+            {profile.socialsPosition === 'bottom' && <SocialHub />}
             
             <div className={`mt-auto pt-8 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.3em] opacity-40 ${theme.textColor}`}>
                <i className="fa-solid fa-bolt text-xs"></i>

@@ -11,7 +11,7 @@ export interface Link {
   price?: string;
   isFeatured?: boolean;
   isHeroVideo?: boolean;
-  isNSFW?: boolean; // New: Flag for sensitive/adult content
+  isNSFW?: boolean;
 }
 
 export interface UserProfile {
@@ -28,6 +28,8 @@ export interface UserProfile {
   backgroundOpacity?: number;
   backgroundGrayscale?: boolean;
   backgroundParallax?: boolean;
+  socialsDisplay: 'icons' | 'buttons'; // New: Style of social links
+  socialsPosition: 'top' | 'bottom';   // New: Where socials appear
   socials: {
     instagram?: string;
     twitter?: string;

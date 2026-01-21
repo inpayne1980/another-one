@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, UserProfile, LinkType } from '../types';
 import PreviewFrame from '../components/PreviewFrame';
 import { optimizeBio, suggestLinks } from '../services/geminiService';
+import { useNavigate } from 'react-router-dom';
 
 const getFaviconUrl = (url: string) => {
   try {
@@ -24,6 +25,7 @@ const SOCIAL_PRESETS = [
 ];
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [links, setLinks] = useState<Link[]>(() => {
     const saved = localStorage.getItem('lp_links');
     return saved ? JSON.parse(saved) : [
@@ -48,6 +50,8 @@ const Dashboard: React.FC = () => {
       backgroundOpacity: 0.4,
       backgroundGrayscale: false,
       backgroundParallax: true,
+      socialsDisplay: 'icons',
+      socialsPosition: 'bottom',
       socials: { twitter: 'alex_tweets', instagram: 'alex_visuals' }
     };
   });
@@ -241,14 +245,22 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Quick Add Presets */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-4 overflow-x-auto no-scrollbar">
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap">Quick Social:</span>
-            <div className="flex items-center gap-3">
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+               <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Quick Social Links</span>
+               <button 
+                onClick={() => navigate('/appearance')}
+                className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline"
+               >
+                 Connect More Socials →
+               </button>
+            </div>
+            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
               {SOCIAL_PRESETS.map((preset) => (
                 <button
                   key={preset.name}
                   onClick={() => addLink('standard', { name: preset.name, url: preset.url })}
-                  className={`w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 border border-gray-100 text-gray-400 transition-all hover:scale-110 hover:bg-white hover:shadow-md ${preset.color}`}
+                  className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-gray-50 border border-gray-100 text-gray-400 transition-all hover:scale-110 hover:bg-white hover:shadow-md ${preset.color}`}
                   title={`Quick Add ${preset.name}`}
                 >
                   <i className={`fa-brands ${preset.icon} text-lg`}></i>

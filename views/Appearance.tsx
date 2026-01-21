@@ -31,6 +31,8 @@ const Appearance: React.FC = () => {
       backgroundOpacity: 0.4,
       backgroundGrayscale: false,
       backgroundParallax: true,
+      socialsDisplay: 'icons',
+      socialsPosition: 'bottom',
       socials: { twitter: 'alex_tweets', instagram: 'alex_visuals' }
     };
   });
@@ -72,6 +74,94 @@ const Appearance: React.FC = () => {
                 )}
               </button>
             ))}
+          </div>
+        </section>
+
+        {/* Social Layout Control */}
+        <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+           <div className="mb-8">
+              <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Social Hub Layout</h2>
+              <p className="text-xs text-gray-400 mt-1">Control how your brand icons are presented.</p>
+           </div>
+           
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                 <label className="text-xs font-black uppercase tracking-widest text-gray-500">Placement</label>
+                 <div className="flex gap-2 p-1 bg-gray-50 rounded-2xl">
+                    {[
+                      { id: 'top', label: 'Top (Under Bio)' },
+                      { id: 'bottom', label: 'Bottom (Footer)' }
+                    ].map((pos) => (
+                      <button
+                        key={pos.id}
+                        onClick={() => setProfile({ ...profile, socialsPosition: pos.id as any })}
+                        className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
+                          profile.socialsPosition === pos.id 
+                            ? 'bg-white text-indigo-600 shadow-sm' 
+                            : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        {pos.label}
+                      </button>
+                    ))}
+                 </div>
+              </div>
+
+              <div className="space-y-4">
+                 <label className="text-xs font-black uppercase tracking-widest text-gray-500">Visual Style</label>
+                 <div className="flex gap-2 p-1 bg-gray-50 rounded-2xl">
+                    {[
+                      { id: 'icons', label: 'Minimal Icons' },
+                      { id: 'buttons', label: 'Full Buttons' }
+                    ].map((style) => (
+                      <button
+                        key={style.id}
+                        onClick={() => setProfile({ ...profile, socialsDisplay: style.id as any })}
+                        className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
+                          profile.socialsDisplay === style.id 
+                            ? 'bg-white text-indigo-600 shadow-sm' 
+                            : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        {style.label}
+                      </button>
+                    ))}
+                 </div>
+              </div>
+           </div>
+        </section>
+
+        <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-8 text-indigo-600">
+            <div>
+              <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Social Identity</h2>
+              <p className="text-xs text-gray-400 mt-1">Connect your handles to show verified brand icons.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {['instagram', 'tiktok', 'facebook', 'twitter', 'youtube', 'linkedin'].map((platform) => {
+              const handle = (profile.socials as any)[platform] || '';
+              return (
+                <div key={platform} className="relative">
+                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-all ${handle ? 'bg-white shadow-sm' : 'bg-transparent'}`}>
+                    <img 
+                      src={getPlatformFavicon(platform)} 
+                      alt={platform} 
+                      className={`w-4 h-4 object-contain ${handle ? '' : 'grayscale opacity-30'}`}
+                    />
+                  </div>
+                  <input
+                    placeholder={`${platform} username`}
+                    value={handle}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      socials: { ...profile.socials, [platform]: e.target.value }
+                    })}
+                    className="w-full bg-gray-50 border-2 border-transparent rounded-2xl py-4 pl-14 pr-4 outline-none focus:bg-white focus:border-indigo-600 transition-all text-xs font-bold"
+                  />
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -205,40 +295,6 @@ const Appearance: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
-        </section>
-
-        <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Social Identity</h2>
-              <p className="text-xs text-gray-400 mt-1">Connect your handles to show verified brand icons.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {['instagram', 'tiktok', 'facebook', 'twitter', 'youtube', 'linkedin'].map((platform) => {
-              const handle = (profile.socials as any)[platform] || '';
-              return (
-                <div key={platform} className="relative">
-                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-all ${handle ? 'bg-white shadow-sm' : 'bg-transparent'}`}>
-                    <img 
-                      src={getPlatformFavicon(platform)} 
-                      alt={platform} 
-                      className={`w-4 h-4 object-contain ${handle ? '' : 'grayscale opacity-30'}`}
-                    />
-                  </div>
-                  <input
-                    placeholder={`${platform}`}
-                    value={handle}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      socials: { ...profile.socials, [platform]: e.target.value }
-                    })}
-                    className="w-full bg-gray-50 border-2 border-transparent rounded-2xl py-4 pl-14 pr-4 outline-none focus:bg-white focus:border-indigo-600 transition-all text-xs font-bold"
-                  />
-                </div>
-              );
-            })}
           </div>
         </section>
       </div>

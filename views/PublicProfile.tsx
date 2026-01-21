@@ -82,7 +82,6 @@ const PublicProfile: React.FC = () => {
     setRevealedNsfw(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Parallax logic: translate from 0 to -10% of the image height
   const parallaxTransform = profile.backgroundParallax 
     ? `translateY(${-scrollProgress * 5}%)` 
     : 'none';
@@ -94,7 +93,6 @@ const PublicProfile: React.FC = () => {
         backgroundImage: `url(${profile.backgroundImage})`, 
         backgroundSize: 'cover', 
         backgroundPosition: 'center',
-        // Increased height to allow for parallax room
         height: profile.backgroundParallax ? '115vh' : '100vh',
         top: profile.backgroundParallax ? '-5vh' : '0',
         filter: `${profile.backgroundGrayscale ? 'grayscale(1)' : ''} blur(${profile.backgroundBlur || 0}px)`,
@@ -105,15 +103,56 @@ const PublicProfile: React.FC = () => {
 
   const bgClassName = profile.backgroundType === 'theme' ? theme.background : '';
 
+  const SocialHub = () => {
+    const activeSocials = Object.entries(profile.socials).filter(([_, h]) => !!h);
+    if (activeSocials.length === 0) return null;
+
+    if (profile.socialsDisplay === 'buttons') {
+      return (
+        <div className="w-full max-w-sm space-y-3 mb-10 mt-2">
+          {activeSocials.map(([platform, handle]) => (
+            <a 
+              key={platform}
+              href={`https://${platform === 'twitter' ? 'x' : platform}.com/${handle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`w-full py-5 px-8 rounded-2xl flex items-center justify-center gap-4 text-lg font-black backdrop-blur-md border border-white/20 shadow-xl transition-all hover:scale-105 active:scale-95 ${theme.buttonColor} ${theme.buttonTextColor} opacity-90`}
+            >
+              <i className={`fa-brands fa-${platform === 'twitter' ? 'x-twitter' : platform} text-xl`}></i>
+              <span className="capitalize">{platform}</span>
+            </a>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className={`mt-4 mb-12 flex flex-wrap justify-center gap-8 ${profile.socialsPosition === 'bottom' ? 'mt-20' : ''}`}>
+        {activeSocials.map(([platform, handle]) => {
+          const iconClass = platform === 'twitter' ? 'fa-brands fa-x-twitter' : `fa-brands fa-${platform}`;
+          return (
+            <a 
+              key={platform} 
+              href={`https://${platform === 'twitter' ? 'x' : platform}.com/${handle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${theme.textColor} opacity-60 hover:opacity-100 transition-all transform hover:scale-125 hover:-translate-y-2 drop-shadow-xl`}
+            >
+              <i className={`${iconClass} text-5xl md:text-6xl`}></i>
+            </a>
+          )
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden">
-      {/* Background Layer (Parallax Container) */}
       <div 
         className={`fixed inset-0 w-full transition-all duration-1000 ease-out z-0 ${bgClassName}`} 
         style={bgStyle}
       />
       
-      {/* HD Dimmer Overlay (Stays static) */}
       {profile.backgroundType === 'image' && (
         <div 
           className="fixed inset-0 transition-opacity duration-1000 z-[1] pointer-events-none"
@@ -121,7 +160,6 @@ const PublicProfile: React.FC = () => {
         />
       )}
 
-      {/* Main Content Area */}
       <div className="relative z-10 flex flex-col items-center p-6 sm:p-12">
         <style>{`
           @keyframes pulse-custom {
@@ -134,24 +172,22 @@ const PublicProfile: React.FC = () => {
         `}</style>
 
         <div className="max-w-[680px] w-full flex flex-col items-center">
-          {/* Profile Header */}
-          <div className="mt-12 mb-6">
+          <div className="mt-12 mb-6 text-center">
             <img 
               src={profile.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`} 
               alt="Avatar" 
-              className="w-28 h-28 rounded-full border-4 border-white/30 object-cover shadow-2xl hover:rotate-3 transition-transform duration-500"
+              className="w-28 h-28 rounded-full border-4 border-white/30 object-cover shadow-2xl hover:rotate-3 transition-transform duration-500 mx-auto mb-4"
             />
+            <h1 className={`text-4xl font-black mb-2 tracking-tight drop-shadow-lg ${theme.textColor}`}>
+              @{profile.username}
+            </h1>
+            <p className={`text-center mb-6 text-lg opacity-90 max-w-sm font-semibold leading-relaxed drop-shadow-lg ${theme.textColor}`}>
+              {profile.bio}
+            </p>
           </div>
-          
-          <h1 className={`text-4xl font-black mb-2 tracking-tight drop-shadow-lg ${theme.textColor}`}>
-            @{profile.username}
-          </h1>
-          
-          <p className={`text-center mb-12 text-lg opacity-90 max-w-sm font-semibold leading-relaxed drop-shadow-lg ${theme.textColor}`}>
-            {profile.bio}
-          </p>
 
-          {/* Hero Windows Grid */}
+          {profile.socialsPosition === 'top' && <SocialHub />}
+
           {heroLinks.length > 0 && (
             <div className={`w-full grid gap-8 mb-12 ${heroLinks.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
               {heroLinks.map(link => {
@@ -189,7 +225,7 @@ const PublicProfile: React.FC = () => {
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8"
+                        className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8 text-center"
                       >
                          <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-2xl border border-white/30 flex items-center justify-center mb-4 group-hover:bg-white/40 transition-all mx-auto">
                             <i className="fa-solid fa-play text-white text-xl ml-1"></i>
@@ -210,7 +246,6 @@ const PublicProfile: React.FC = () => {
             </div>
           )}
 
-          {/* Standard Links List */}
           <div className="w-full space-y-6">
             {standardLinks.map((link) => {
               if (link.type === 'newsletter') {
@@ -269,26 +304,8 @@ const PublicProfile: React.FC = () => {
             })}
           </div>
 
-          {/* Social Icons */}
-          <div className="mt-20 flex flex-wrap justify-center gap-10">
-            {Object.entries(profile.socials).map(([platform, handle]) => {
-              if (!handle) return null;
-              const iconClass = platform === 'twitter' ? 'fa-brands fa-x-twitter' : `fa-brands fa-${platform}`;
-              return (
-                <a 
-                  key={platform} 
-                  href={`https://${platform === 'twitter' ? 'x' : platform}.com/${handle}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`${theme.textColor} opacity-60 hover:opacity-100 transition-all transform hover:scale-125 hover:-translate-y-2 drop-shadow-xl`}
-                >
-                  <i className={`${iconClass} text-5xl`}></i>
-                </a>
-              )
-            })}
-          </div>
+          {profile.socialsPosition === 'bottom' && <SocialHub />}
 
-          {/* Brand Footer */}
           <footer className="mt-32 pb-16 flex flex-col items-center gap-6">
             <div className={`flex items-center gap-3 font-black text-3xl tracking-tighter opacity-40 ${theme.textColor}`}>
               <div className="bg-white/10 p-2 rounded-2xl backdrop-blur-md border border-white/20">
