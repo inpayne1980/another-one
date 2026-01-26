@@ -17,6 +17,7 @@ const VideoEngine: React.FC = () => {
   const [previewThumbnails, setPreviewThumbnails] = useState<Record<string, string>>({});
   const [thumbnailText, setThumbnailText] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [errorType, setErrorType] = useState<'none' | 'quota' | 'other'>('none');
   
   const [profile, setProfile] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('lp_profile');
@@ -52,7 +53,6 @@ const VideoEngine: React.FC = () => {
     } catch { return []; }
   });
 
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['tiktok', 'instagram', 'youtube_shorts', 'twitter', 'facebook']);
   const [activeKitPromo, setActiveKitPromo] = useState<PromoData | null>(null);
   const [kitPlatform, setKitPlatform] = useState<PlatformStatus['name']>('tiktok');
 
@@ -73,9 +73,20 @@ const VideoEngine: React.FC = () => {
     return (match && match[2] && match[2].length === 11) ? match[2] : null;
   };
 
+  const handleOpenKeyDialog = async () => {
+    if (window.aistudio?.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // Assume success as per guidelines and reset error state
+      setErrorType('none');
+      // Re-trigger if URL exists
+      if (url) handleAnalyze();
+    }
+  };
+
   const handleAnalyze = async () => {
     if (!url) return;
     setLoading(true);
+    setErrorType('none');
     setSuggestions([]);
     setSelectedClip(null);
     setPreviewThumbnails({});
@@ -89,8 +100,16 @@ const VideoEngine: React.FC = () => {
           setThumbnailText(words.slice(0, 3).join(' '));
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Analysis failed", error);
+      if (error?.message?.includes('429') || error?.status === 429 || error?.message?.includes('quota')) {
+        setErrorType('quota');
+      } else if (error?.message?.includes('not found')) {
+        // As per instructions, reset key selection state and prompt again if specific error occurs
+        setErrorType('quota');
+      } else {
+        setErrorType('other');
+      }
     } finally {
       setLoading(false);
     }
@@ -99,6 +118,7 @@ const VideoEngine: React.FC = () => {
   const generateThumbnails = async () => {
     if (!selectedClip) return;
     setThumbnailLoading(true);
+    setErrorType('none');
     try {
       const [thumb169, thumb916] = await Promise.all([
         generateViralThumbnail(`${selectedClip.viralTitle}. ${selectedClip.caption}`, thumbnailText, "16:9"),
@@ -109,52 +129,22 @@ const VideoEngine: React.FC = () => {
       if (thumb169) newThumbs['16:9'] = thumb169;
       if (thumb916) newThumbs['9:16'] = thumb916;
       setPreviewThumbnails(newThumbs);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Preview generation failed:", err);
+      if (err?.message?.includes('429') || err?.status === 429 || err?.message?.includes('quota')) {
+        setErrorType('quota');
+      }
     } finally {
       setThumbnailLoading(false);
     }
   };
 
-  const handlePublish = async () => {
+  const handleCreateCampaign = async () => {
     const videoId = extractVideoId(url);
     if (!selectedClip || !targetUrl || !videoId) return;
 
     setIsPublishing(true);
     try {
-      const platformConfigs: { name: PlatformStatus['name'], aspect: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" }[] = [
-        { name: 'tiktok', aspect: '9:16' },
-        { name: 'instagram', aspect: '9:16' },
-        { name: 'youtube_shorts', aspect: '9:16' },
-        { name: 'facebook', aspect: '4:3' },
-        { name: 'twitter', aspect: '16:9' }
-      ];
-
-      const targetConfigs = platformConfigs.filter(c => selectedPlatforms.includes(c.name));
-
-      const thumbResults = await Promise.all(
-        targetConfigs.map(async (config) => {
-          if (previewThumbnails[config.aspect]) {
-             return { name: config.name, url: previewThumbnails[config.aspect] };
-          }
-          try {
-            const thumb = await generateViralThumbnail(
-              `${config.name} social optimization: ${selectedClip.viralTitle}`,
-              thumbnailText,
-              config.aspect as any
-            );
-            return { name: config.name, url: thumb };
-          } catch {
-            return { name: config.name, url: undefined };
-          }
-        })
-      );
-
-      const platformThumbs: Record<string, string> = {};
-      thumbResults.forEach(res => {
-        if (res.url) platformThumbs[res.name] = res.url;
-      });
-
       const promoId = Date.now().toString();
       const newPromo: PromoData = {
         id: promoId,
@@ -165,13 +155,16 @@ const VideoEngine: React.FC = () => {
         caption: selectedClip.caption,
         viralTitle: selectedClip.viralTitle,
         viralDescription: selectedClip.viralDescription,
-        thumbnailUrl: previewThumbnails['16:9'] || platformThumbs['twitter'] || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-        platformThumbnails: platformThumbs,
+        thumbnailUrl: previewThumbnails['16:9'] || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+        platformThumbnails: {
+           tiktok: previewThumbnails['9:16'],
+           instagram: previewThumbnails['9:16'],
+           youtube_shorts: previewThumbnails['9:16'],
+           twitter: previewThumbnails['16:9'],
+           facebook: previewThumbnails['16:9']
+        },
         targetUrl,
-        platforms: platformConfigs.map(c => ({ 
-          name: c.name, 
-          status: selectedPlatforms.includes(c.name) ? 'published' : 'draft' 
-        })),
+        platforms: PLATFORMS.map(name => ({ name, status: 'draft' })),
         status: 'published',
         createdAt: new Date().toISOString()
       };
@@ -186,7 +179,7 @@ const VideoEngine: React.FC = () => {
         isHeroVideo: true,
         isFeatured: true,
         isNSFW: isNSFW,
-        thumbnailUrl: previewThumbnails['16:9'] || platformThumbs['twitter'],
+        thumbnailUrl: newPromo.thumbnailUrl,
         viralDescription: selectedClip.viralDescription,
         origin: 'promo'
       };
@@ -194,6 +187,7 @@ const VideoEngine: React.FC = () => {
       setPromos(prev => [newPromo, ...prev]);
       setLinks(prev => [newLink, ...prev]);
 
+      // Reset
       setUrl('');
       setSuggestions([]);
       setSelectedClip(null);
@@ -203,11 +197,8 @@ const VideoEngine: React.FC = () => {
       setIsNSFW(false);
       setPreviewThumbnails({});
       setThumbnailText('');
-      
-      alert("Success! Your campaign is live and the link has been added to your profile preview.");
     } catch (err) {
-      console.error("Campaign deployment error:", err);
-      alert("Campaign deployment encountered an error. Please try again.");
+      console.error("Campaign creation error:", err);
     } finally {
       setIsPublishing(false);
     }
@@ -233,23 +224,25 @@ const VideoEngine: React.FC = () => {
         { name: 'twitter', aspect: '16:9' }
       ].find(c => c.name === platformName);
 
-      const thumb = await generateViralThumbnail(
-        `${platformName} optimized: ${promo.viralTitle}`,
-        promo.viralTitle.split(' ').slice(0, 3).join(' '),
-        (config?.aspect || "16:9") as any
-      );
+      let thumb = promo.platformThumbnails?.[platformName];
+      if (!thumb) {
+        thumb = await generateViralThumbnail(
+          `${platformName} optimized: ${promo.viralTitle}`,
+          promo.viralTitle.split(' ').slice(0, 3).join(' '),
+          (config?.aspect || "16:9") as any
+        );
+      }
 
       setPromos(prev => prev.map(p => 
         p.id === promoId ? { 
           ...p, 
-          platformThumbnails: { ...p.platformThumbnails, [platformName]: thumb || '' },
+          platformThumbnails: { ...p.platformThumbnails, [platformName]: thumb || p.thumbnailUrl || '' },
           platforms: p.platforms.map(pl => pl.name === platformName ? { ...pl, status: 'published', publishedAt: new Date().toISOString() } : pl) 
         } : p
       ));
-
-      alert(`Successfully deployed to ${platformName.replace('_', ' ')}!`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      if (e?.message?.includes('429')) setErrorType('quota');
       setPromos(prev => prev.map(p => 
         p.id === promoId ? { 
           ...p, 
@@ -262,7 +255,6 @@ const VideoEngine: React.FC = () => {
   const handleDeployAllForPromo = async (promoId: string) => {
     const promo = promos.find(p => p.id === promoId);
     if (!promo) return;
-    
     const draftPlatforms = promo.platforms.filter(pl => pl.status === 'draft').map(pl => pl.name);
     for (const pl of draftPlatforms) {
       await handleDeploySingle(promoId, pl as PlatformStatus['name']);
@@ -273,12 +265,6 @@ const VideoEngine: React.FC = () => {
     if (!window.confirm("Delete this campaign?")) return;
     setPromos(prev => prev.filter(p => p.id !== id));
     setLinks(prev => prev.filter(l => l.id !== id));
-  };
-
-  const togglePlatformSelection = (name: string) => {
-    setSelectedPlatforms(prev => 
-      prev.includes(name) ? prev.filter(p => p !== name) : [...prev, name]
-    );
   };
 
   const PlatformIcon = ({ name }: { name: string }) => {
@@ -306,16 +292,36 @@ const VideoEngine: React.FC = () => {
         <header className="flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">Smart Video Engine</h1>
-            <p className="text-slate-500 font-medium mt-2">AI-powered viral clip extraction with live profile preview.</p>
+            <p className="text-slate-500 font-medium mt-2">Create viral links for your bio and automate social distribution.</p>
           </div>
           <div className="bg-indigo-600 text-white px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-100">
             <i className="fa-solid fa-bolt mr-2"></i> Pro Feature
           </div>
         </header>
 
+        {errorType === 'quota' && (
+          <div className="bg-rose-50 border-2 border-rose-100 p-6 rounded-[2rem] flex flex-col md:flex-row items-center gap-6 animate-in slide-in-from-top-4">
+             <div className="w-14 h-14 bg-rose-600 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-rose-200">
+               <i className="fa-solid fa-bolt-lightning text-xl"></i>
+             </div>
+             <div className="flex-1 text-center md:text-left">
+               <h3 className="text-lg font-black text-rose-900">AI Quota Exhausted</h3>
+               <p className="text-sm text-rose-700/80 font-medium">The shared engine is currently at capacity. Boost your limits by connecting your personal Google AI key.</p>
+             </div>
+             <button 
+              onClick={handleOpenKeyDialog}
+              className="bg-rose-600 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-rose-700 transition-all flex items-center gap-2 whitespace-nowrap"
+             >
+               <i className="fa-solid fa-key"></i> Boost Limits
+             </button>
+             <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-[10px] text-rose-400 font-bold underline">Billing Docs</a>
+          </div>
+        )}
+
+        {/* Campaign Creation Wizard */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200 space-y-8">
           <div className="space-y-4">
-            <label className="block text-xs font-black uppercase tracking-widest text-gray-400">Step 1: Content Source</label>
+            <label className="block text-xs font-black uppercase tracking-widest text-gray-400">Step 1: Video Source</label>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -327,7 +333,7 @@ const VideoEngine: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-6 bg-indigo-50 border-2 border-dashed border-indigo-200 rounded-3xl space-y-4">
               <div className="flex justify-between items-center">
-                <h4 className="font-bold text-indigo-900">Visual Hints</h4>
+                <h4 className="font-bold text-indigo-900">Visual Context (Optional)</h4>
                 <button onClick={() => fileInputRef.current?.click()} className="text-[10px] font-black bg-indigo-600 text-white px-3 py-1.5 rounded-full hover:bg-indigo-700 transition-colors uppercase tracking-widest">+ Add Images</button>
               </div>
               <input type="file" multiple accept="image/*" hidden ref={fileInputRef} onChange={(e) => {
@@ -350,11 +356,11 @@ const VideoEngine: React.FC = () => {
             </div>
             
             <div className="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl space-y-4">
-              <h4 className="font-bold text-slate-900">Scene Context</h4>
+              <h4 className="font-bold text-slate-900">Transcript / Prompt</h4>
               <textarea 
                 value={script}
                 onChange={(e) => setScript(e.target.value)}
-                placeholder="What's the main hook of this video?"
+                placeholder="What's this video about?"
                 className="w-full h-24 p-4 bg-white border border-slate-200 rounded-2xl text-sm outline-none resize-none shadow-inner"
               />
             </div>
@@ -366,12 +372,12 @@ const VideoEngine: React.FC = () => {
             className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl transition-all shadow-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-3"
           >
             {loading ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-sparkles"></i>}
-            {loading ? 'Finding Viral Moments...' : 'Extract Viral Highlights'}
+            {loading ? 'Finding Viral Moments...' : 'Scan Video for Viral Moments'}
           </button>
 
           {suggestions.length > 0 && (
             <div className="pt-8 border-t border-slate-100 space-y-8 animate-in slide-in-from-top-4 duration-500">
-              <h3 className="text-xl font-bold">Recommended Viral Hooks</h3>
+              <h3 className="text-xl font-bold">Pick Your Viral Hook</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {suggestions.map((clip) => (
                   <div 
@@ -389,19 +395,19 @@ const VideoEngine: React.FC = () => {
               </div>
 
               {selectedClip && (
-                <div className="space-y-8">
+                <div className="space-y-8 animate-in zoom-in-95 duration-300">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 bg-slate-50 p-8 rounded-[2.5rem] border border-slate-200">
                     <div className="lg:col-span-1 space-y-6">
-                      <h4 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Viral Configuration</h4>
+                      <h4 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Headline & Assets</h4>
                       <div className="space-y-4">
                          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                            <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Headline</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Generated Title</p>
                             <p className="font-black text-slate-900 leading-tight">{selectedClip.viralTitle}</p>
                          </div>
                          <input 
                           value={thumbnailText}
                           onChange={(e) => setThumbnailText(e.target.value)}
-                          placeholder="Overlay Text"
+                          placeholder="Overlay Text for Thumbnail"
                           className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-indigo-100"
                          />
                          <button 
@@ -416,7 +422,7 @@ const VideoEngine: React.FC = () => {
                     </div>
 
                     <div className="lg:col-span-2 space-y-6">
-                      <h4 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Asset Preview Logic</h4>
+                      <h4 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Asset Preview</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                          <div className="space-y-3">
                             <p className="text-[10px] font-black text-slate-400 uppercase text-center">Standard (16:9)</p>
@@ -447,28 +453,8 @@ const VideoEngine: React.FC = () => {
                   </div>
 
                   <div className="p-8 bg-white border border-slate-200 rounded-[2.5rem] space-y-6 shadow-xl border-t-4 border-t-indigo-600">
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Deployment Platforms</label>
-                      <div className="flex flex-wrap gap-3">
-                        {PLATFORMS.map(p => (
-                          <button
-                            key={p}
-                            onClick={() => togglePlatformSelection(p)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 border-2 ${
-                              selectedPlatforms.includes(p) 
-                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' 
-                                : 'bg-white border-slate-200 text-slate-400 grayscale hover:grayscale-0'
-                            }`}
-                          >
-                            <PlatformIcon name={p} />
-                            {p.replace('_', ' ')}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     <div className="flex flex-col gap-3">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monetization URL</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destination URL (Monetization)</label>
                       <input
                         value={targetUrl}
                         onChange={(e) => setTargetUrl(e.target.value)}
@@ -476,14 +462,29 @@ const VideoEngine: React.FC = () => {
                         className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-black text-slate-700 focus:bg-white transition-all"
                       />
                     </div>
+                    
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="checkbox" 
+                          id="nsfw-toggle" 
+                          checked={isNSFW} 
+                          onChange={(e) => setIsNSFW(e.target.checked)}
+                          className="w-5 h-5 accent-indigo-600"
+                        />
+                        <label htmlFor="nsfw-toggle" className="text-sm font-bold text-slate-700">Mark as NSFW (Safe-mode Blur)</label>
+                      </div>
+                    </div>
+
                     <button 
-                      onClick={handlePublish} 
-                      disabled={isPublishing || selectedPlatforms.length === 0}
+                      onClick={handleCreateCampaign} 
+                      disabled={isPublishing || !targetUrl}
                       className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black shadow-2xl flex items-center justify-center gap-3 hover:scale-[1.01] active:scale-[0.98] transition-all disabled:opacity-50"
                     >
-                      {isPublishing ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-tower-broadcast"></i>}
-                      {isPublishing ? 'Orchestrating Campaign...' : 'Deploy To Selected Platforms'}
+                      {isPublishing ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-plus-circle"></i>}
+                      {isPublishing ? 'Creating Campaign...' : 'Save Campaign & Add to Bio'}
                     </button>
+                    <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Deploy to social platforms separately in the command center below</p>
                   </div>
                 </div>
               )}
@@ -491,6 +492,7 @@ const VideoEngine: React.FC = () => {
           )}
         </div>
 
+        {/* Social Command Center List (History) */}
         <section className="space-y-8 pt-12">
           <div className="flex items-center justify-between">
              <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Social Command Center</h2>
@@ -510,7 +512,7 @@ const VideoEngine: React.FC = () => {
                 <div className="w-full xl:w-64 shrink-0">
                   <div className="aspect-[9/16] bg-slate-900 rounded-[2rem] overflow-hidden relative border border-slate-100 shadow-lg group-hover:scale-[1.02] transition-transform">
                      <img 
-                      src={p.platformThumbnails?.tiktok || p.thumbnailUrl || `https://img.youtube.com/vi/${p.videoId}/hqdefault.jpg`} 
+                      src={p.thumbnailUrl || `https://img.youtube.com/vi/${p.videoId}/hqdefault.jpg`} 
                       className="w-full h-full object-cover opacity-60" 
                       alt="Promo"
                      />
@@ -527,33 +529,56 @@ const VideoEngine: React.FC = () => {
                     <div className="flex items-center justify-between">
                        <h3 className="text-2xl font-black text-slate-900 truncate max-w-md">{p.viralTitle || "Viral Clip"}</h3>
                        <div className="flex gap-2">
-                          <button onClick={() => handleDeployAllForPromo(p.id)} className="text-[10px] font-black bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all uppercase">Deploy All</button>
+                          <button 
+                            onClick={() => handleDeployAllForPromo(p.id)} 
+                            className="text-[10px] font-black bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all uppercase"
+                          >
+                            Deploy to All Platforms
+                          </button>
                           <button onClick={() => deletePromo(p.id)} className="text-slate-200 hover:text-red-500 transition-colors p-2"><i className="fa-solid fa-trash"></i></button>
                        </div>
                     </div>
                     <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
                       <span className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">CLIP: {p.clipStart}S-{p.clipEnd}S</span>
                       <a href={p.targetUrl} target="_blank" className="text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg">{p.targetUrl?.replace('https://','')}</a>
+                      <span className="ml-auto text-slate-300">{new Date(p.createdAt).toLocaleDateString()}</span>
                     </div>
                     <p className="text-xs text-slate-500 italic line-clamp-2 bg-slate-50/50 p-4 rounded-xl">"{p.viralDescription || p.caption}"</p>
                   </div>
 
                   <div className="mt-8 space-y-4">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Threads</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                      <span>Platform-Specific Threads</span>
+                      <span className="text-[8px] opacity-50">Click to deploy individually</span>
+                    </p>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      {p.platforms?.map(platform => (
-                        <button 
-                          key={platform.name}
-                          disabled={platform.status === 'publishing'}
-                          onClick={() => platform.status === 'published' ? (setActiveKitPromo(p), setKitPlatform(platform.name)) : handleDeploySingle(p.id, platform.name)}
-                          className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 relative ${
-                            platform.status === 'published' ? 'border-indigo-100 bg-indigo-50 text-indigo-600' : platform.status === 'publishing' ? 'border-amber-100 bg-amber-50 text-amber-600 animate-pulse' : 'border-slate-50 bg-slate-50 text-slate-400 hover:border-indigo-200'
-                          }`}
-                        >
-                          <div className="text-lg"><PlatformIcon name={platform.name} /></div>
-                          <span className="text-[8px] font-black uppercase">{platform.name?.replace('_', ' ')}</span>
-                        </button>
-                      ))}
+                      {p.platforms?.map(platform => {
+                        const isPublishing = platform.status === 'publishing';
+                        const isPublished = platform.status === 'published';
+                        
+                        return (
+                          <button 
+                            key={platform.name}
+                            disabled={isPublishing}
+                            onClick={() => isPublished ? (setActiveKitPromo(p), setKitPlatform(platform.name)) : handleDeploySingle(p.id, platform.name)}
+                            className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 relative ${
+                              isPublished 
+                                ? 'border-indigo-100 bg-indigo-50 text-indigo-600' 
+                                : isPublishing 
+                                  ? 'border-amber-100 bg-amber-50 text-amber-600 animate-pulse' 
+                                  : 'border-slate-50 bg-slate-50 text-slate-400 hover:border-indigo-200 hover:bg-white'
+                            }`}
+                          >
+                            <div className="text-lg"><PlatformIcon name={platform.name} /></div>
+                            <span className="text-[8px] font-black uppercase">{platform.name?.replace('_', ' ')}</span>
+                            {isPublished && (
+                              <div className="absolute top-1 right-1">
+                                <i className="fa-solid fa-circle-check text-[10px]"></i>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -592,7 +617,8 @@ const VideoEngine: React.FC = () => {
                         onClick={() => setKitPlatform(pl.name)}
                         className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
                           kitPlatform === pl.name ? 'bg-indigo-600 text-white shadow-xl' : 'hover:bg-white text-slate-400'
-                        }`}
+                        } ${pl.status !== 'published' ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
+                        disabled={pl.status !== 'published'}
                       >
                         <PlatformIcon name={pl.name} />
                         {pl.name?.replace('_', ' ')}
@@ -604,9 +630,21 @@ const VideoEngine: React.FC = () => {
                     <div className="space-y-6">
                        <div className="bg-slate-950 rounded-[3rem] overflow-hidden shadow-2xl relative border-[12px] border-slate-900 ring-1 ring-slate-200/10">
                           <div className={`relative w-full ${getPlatformAspect(kitPlatform)} transition-all duration-700 overflow-hidden`}>
-                             <img src={activeKitPromo.platformThumbnails?.[kitPlatform] || activeKitPromo.thumbnailUrl || `https://img.youtube.com/vi/${activeKitPromo.videoId}/hqdefault.jpg`} className="w-full h-full object-cover transition-all duration-500 animate-in fade-in" alt="Platform Thumbnail" />
+                             <img 
+                               src={activeKitPromo.platformThumbnails?.[kitPlatform] || activeKitPromo.thumbnailUrl || `https://img.youtube.com/vi/${activeKitPromo.videoId}/hqdefault.jpg`} 
+                               className="w-full h-full object-cover transition-all duration-500 animate-in fade-in" 
+                               alt="Platform Thumbnail" 
+                             />
                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                           </div>
+                       </div>
+                       <div className="flex gap-4">
+                          <button className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-black transition-all">
+                             Download Master Asset
+                          </button>
+                          <button onClick={() => navigator.clipboard.writeText(activeKitPromo.targetUrl)} className="bg-indigo-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg hover:scale-105 transition-transform">
+                             <i className="fa-solid fa-link"></i>
+                          </button>
                        </div>
                     </div>
                     <div className="space-y-10">
@@ -623,6 +661,9 @@ const VideoEngine: React.FC = () => {
                             {activeKitPromo.viralDescription || activeKitPromo.caption}
                             <button onClick={() => navigator.clipboard.writeText(activeKitPromo.viralDescription || '')} className="absolute top-4 right-4 text-indigo-400 opacity-0 group-hover:opacity-100 transition-all"><i className="fa-solid fa-copy"></i></button>
                           </div>
+                       </div>
+                       <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 text-[11px] text-indigo-900 leading-relaxed">
+                          <i className="fa-solid fa-robot mr-2"></i> <strong>AI Insight:</strong> This asset is formatted specifically for {kitPlatform.replace('_', ' ')} engagement patterns. Use the optimized headline to increase click-through by up to 40%.
                        </div>
                     </div>
                  </div>
