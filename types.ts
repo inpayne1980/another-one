@@ -27,7 +27,7 @@ export interface ClipSuggestion {
 }
 
 export interface PlatformStatus {
-  name: 'tiktok' | 'instagram' | 'youtube_shorts' | 'twitter' | 'threads';
+  name: 'tiktok' | 'instagram' | 'youtube_shorts' | 'twitter' | 'threads' | 'facebook';
   status: 'draft' | 'scheduled' | 'published';
   publishedAt?: string;
 }
@@ -42,6 +42,7 @@ export interface PromoData {
   viralTitle: string;
   viralDescription: string;
   thumbnailUrl?: string;
+  platformThumbnails?: Record<string, string>; // Maps platform name to unique thumbnail data
   targetUrl: string;
   platforms: PlatformStatus[];
   status: 'published' | 'draft' | 'publishing';

@@ -113,12 +113,16 @@ export async function getClipSuggestions(
   }
 }
 
-export async function generateViralThumbnail(context: string, overlayText?: string): Promise<string | undefined> {
+export async function generateViralThumbnail(
+  context: string, 
+  overlayText?: string, 
+  aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9"
+): Promise<string | undefined> {
   try {
-    let prompt = `Generate a highly professional, click-driven YouTube/TikTok thumbnail image for a video about: ${context}. The aesthetic should be modern, clean, and high-contrast, suitable for a professional creator.`;
+    let prompt = `Generate a highly professional, click-driven social media thumbnail image for a video about: ${context}. Aspect ratio is ${aspectRatio}. The aesthetic should be modern, clean, and high-contrast.`;
     
     if (overlayText && overlayText.trim().length > 0) {
-      prompt += ` IMPORTANT: Include the text "${overlayText}" prominently and clearly in the image using bold, modern, and highly legible typography that pops against the background.`;
+      prompt += ` IMPORTANT: Include the text "${overlayText}" prominently and clearly in the image using bold, modern typography.`;
     } else {
       prompt += ` Do not include any text in the image.`;
     }
@@ -130,7 +134,7 @@ export async function generateViralThumbnail(context: string, overlayText?: stri
       },
       config: {
         imageConfig: {
-          aspectRatio: "16:9"
+          aspectRatio: aspectRatio
         }
       }
     });
