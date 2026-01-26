@@ -26,8 +26,8 @@ const Dashboard: React.FC = () => {
   const [links, setLinks] = useState<Link[]>(() => {
     const saved = localStorage.getItem('lp_links');
     return saved ? JSON.parse(saved) : [
-      { id: '1', title: 'Visit My Portfolio', url: 'https://example.com', active: true, clicks: 120, type: 'standard' },
-      { id: '2', title: 'Check Out My New Video', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', active: true, clicks: 840, type: 'video', isHeroVideo: true, isNSFW: false }
+      { id: '1', title: 'Visit My Portfolio', url: 'https://example.com', active: true, clicks: 120, type: 'standard', origin: 'manual' },
+      { id: '2', title: 'Check Out My New Video', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', active: true, clicks: 840, type: 'video', isHeroVideo: true, isNSFW: false, origin: 'manual' }
     ];
   });
 
@@ -55,6 +55,9 @@ const Dashboard: React.FC = () => {
 
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [rewritingId, setRewritingId] = useState<string | null>(null);
+  
+  // History Toggling
+  const [showPromoHistory, setShowPromoHistory] = useState(true);
 
   useEffect(() => {
     localStorage.setItem('lp_links', JSON.stringify(links));
@@ -81,7 +84,8 @@ const Dashboard: React.FC = () => {
       type: type,
       price: type === 'shop' ? '$19.99' : undefined,
       isNSFW: false,
-      isHeroVideo: type === 'video'
+      isHeroVideo: type === 'video',
+      origin: 'manual'
     };
     setLinks([newLink, ...links]);
   };
@@ -104,6 +108,11 @@ const Dashboard: React.FC = () => {
       setLinks(newLinks);
     }
   };
+
+  const filteredLinks = links.filter(l => {
+    if (!showPromoHistory && l.origin === 'promo') return false;
+    return true;
+  });
 
   return (
     <div className="flex flex-col lg:flex-row gap-10">
@@ -173,17 +182,39 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
 
+        {/* Link History Toggle */}
+        <div className="flex items-center justify-between px-2 pt-4">
+           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Link Ecosystem</h3>
+           <div className="flex items-center gap-3">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Show Promo History</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={showPromoHistory} onChange={(e) => setShowPromoHistory(e.target.checked)} className="sr-only peer" />
+                <div className="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+              </label>
+           </div>
+        </div>
+
         {/* Links Editor */}
         <div className="space-y-4">
-          {links.map((link, index) => {
+          {filteredLinks.length === 0 ? (
+            <div className="py-20 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+               <p className="text-slate-400 font-medium italic">No links found for current filter.</p>
+            </div>
+          ) : filteredLinks.map((link, index) => {
             const ytId = extractYouTubeId(link.url);
             return (
               <div 
                 key={link.id} 
-                className={`bg-white p-6 rounded-[2rem] border-2 flex gap-6 group transition-all ${
+                className={`bg-white p-6 rounded-[2rem] border-2 flex gap-6 group transition-all relative ${
                   link.isHeroVideo ? 'border-amber-100 bg-amber-50/20 shadow-inner' : 'border-slate-100 hover:border-indigo-100'
                 }`}
               >
+                {link.origin === 'promo' && (
+                  <div className="absolute top-0 right-12 -translate-y-1/2 bg-indigo-600 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter shadow-lg z-10">
+                    <i className="fa-solid fa-sparkles mr-1"></i> Promo Origin
+                  </div>
+                )}
+
                 <div className="flex flex-col items-center justify-center gap-3">
                   <button onClick={() => moveLink(index, 'up')} disabled={index === 0} className="text-slate-300 hover:text-indigo-600 disabled:opacity-20"><i className="fa-solid fa-chevron-up text-xl"></i></button>
                   <button onClick={() => moveLink(index, 'down')} disabled={index === links.length - 1} className="text-slate-300 hover:text-indigo-600 disabled:opacity-20"><i className="fa-solid fa-chevron-down text-xl"></i></button>
@@ -229,7 +260,6 @@ const Dashboard: React.FC = () => {
                       />
                     </div>
 
-                    {/* Hero Window Dashboard Preview - Standardized Aspect */}
                     {link.isHeroVideo && ytId && (
                       <div className="relative w-full aspect-video bg-zinc-900 rounded-2xl overflow-hidden group/hero border border-amber-200/50 shadow-inner">
                         <iframe

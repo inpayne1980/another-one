@@ -39,16 +39,19 @@ const PublicProfile: React.FC = () => {
   const [links, setLinks] = useState<Link[]>([]);
   const [promos, setPromos] = useState<PromoData[]>([]);
   const [revealedNSFW, setRevealedNSFW] = useState<Record<string, boolean>>({});
-  const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem('lp_profile');
-    const savedLinks = localStorage.getItem('lp_links');
-    const savedPromos = localStorage.getItem('lp_promos');
-    
-    if (savedProfile) setProfile(JSON.parse(savedProfile));
-    if (savedLinks) setLinks(JSON.parse(savedLinks));
-    if (savedPromos) setPromos(JSON.parse(savedPromos));
+    try {
+      const savedProfile = localStorage.getItem('lp_profile');
+      const savedLinks = localStorage.getItem('lp_links');
+      const savedPromos = localStorage.getItem('lp_promos');
+      
+      if (savedProfile) setProfile(JSON.parse(savedProfile));
+      if (savedLinks) setLinks(JSON.parse(savedLinks));
+      if (savedPromos) setPromos(JSON.parse(savedPromos));
+    } catch (e) {
+      console.error("Failed to load profile data", e);
+    }
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [username]);
@@ -63,11 +66,11 @@ const PublicProfile: React.FC = () => {
   );
 
   const theme = THEMES.find(t => t.id === profile.themeId) || THEMES[0];
-
   const activeHeroLinks = links.filter(l => l.active && l.isHeroVideo);
   const activeLinks = links.filter(l => l.active && !l.isHeroVideo);
 
   const SocialHub = () => {
+    if (!profile.socials) return null;
     const activeSocials = Object.entries(profile.socials).filter(([_, h]) => typeof h === 'string' && h.trim() !== '');
     if (activeSocials.length === 0) return null;
 
@@ -104,11 +107,7 @@ const PublicProfile: React.FC = () => {
             className={`${theme.textColor} transition-all transform hover:scale-110 flex flex-col items-center gap-2 group`}
           >
             <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:bg-white/20 transition-all overflow-hidden p-3">
-              <img 
-                src={getPlatformFavicon(platform)} 
-                alt={platform} 
-                className="w-full h-full object-contain drop-shadow-md" 
-              />
+              <img src={getPlatformFavicon(platform)} alt={platform} className="w-full h-full object-contain drop-shadow-md" />
             </div>
           </a>
         ))}
@@ -135,48 +134,32 @@ const PublicProfile: React.FC = () => {
       )}
 
       <div className="relative z-10 flex flex-col items-center max-w-xl mx-auto px-6 pt-20">
-        
         <div className="text-center mb-10 w-full">
           <div className="relative inline-block mb-6">
-            <img 
-              src={profile.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`} 
-              className="w-28 h-28 rounded-[2.5rem] border-4 border-white/30 shadow-2xl mx-auto object-cover transform hover:rotate-3 transition-transform" 
-              alt="Avatar"
-            />
-            {profile.isPro && (
-              <div className="absolute -bottom-1 -right-1 bg-indigo-600 text-white w-8 h-8 rounded-xl flex items-center justify-center shadow-xl border-2 border-white/20">
-                <i className="fa-solid fa-crown text-[10px]"></i>
-              </div>
-            )}
+            <img src={profile.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`} className="w-28 h-28 rounded-[2.5rem] border-4 border-white/30 shadow-2xl mx-auto object-cover transform hover:rotate-3 transition-transform" alt="Avatar" />
+            {profile.isPro && <div className="absolute -bottom-1 -right-1 bg-indigo-600 text-white w-8 h-8 rounded-xl flex items-center justify-center shadow-xl border-2 border-white/20"><i className="fa-solid fa-crown text-[10px]"></i></div>}
           </div>
-          <h1 className={`text-3xl font-black mb-3 tracking-tight ${theme.textColor}`}>
-            {profile.displayName || `@${profile.username}`}
-          </h1>
-          <p className={`text-sm font-medium opacity-80 max-w-xs mx-auto leading-relaxed px-4 ${theme.textColor}`}>
-            {profile.bio}
-          </p>
+          <h1 className={`text-3xl font-black mb-3 tracking-tight ${theme.textColor}`}>{profile.displayName || `@${profile.username}`}</h1>
+          <p className={`text-sm font-medium opacity-80 max-w-xs mx-auto leading-relaxed px-4 ${theme.textColor}`}>{profile.bio}</p>
         </div>
 
         {profile.socialsPosition === 'top' && <SocialHub />}
 
-        {/* Hero Video Section - Professional Window Size */}
         {activeHeroLinks.length > 0 && (
           <div className="w-full space-y-12 mb-16 px-2">
             {activeHeroLinks.map(link => {
-              const promo = promos.find(p => p.id === link.id);
+              const promo = Array.isArray(promos) ? promos.find(p => p.id === link.id) : null;
               const ytId = extractYouTubeId(link.url);
               if (!ytId && !promo) return null;
               
-              const videoId = promo ? promo.videoId : ytId;
-              const start = promo ? promo.clipStart : 0;
+              const vId = promo ? promo.videoId : ytId;
+              const start = promo ? (promo.clipStart || 0) : 0;
               const end = promo ? promo.clipEnd : undefined;
-              const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}${end ? `&end=${end}` : ''}&autoplay=0&mute=1&modestbranding=1&rel=0&controls=1`;
-              
+              const embedUrl = `https://www.youtube.com/embed/${vId}?start=${start}${end ? `&end=${end}` : ''}&autoplay=0&mute=1&modestbranding=1&rel=0&controls=1`;
               const isBlurred = link.isNSFW && !revealedNSFW[link.id];
 
               return (
                 <div key={link.id} className="group bg-white rounded-[2.5rem] overflow-hidden shadow-[0_30px_100px_-20px_rgba(0,0,0,0.5)] border border-white/10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-                  {/* Correct Hero Aspect Ratio (16:9 for Standard / 4:5 for high impact) */}
                   <div className="aspect-video relative bg-zinc-950 overflow-hidden shadow-inner">
                     <iframe
                       src={embedUrl}
@@ -184,44 +167,22 @@ const PublicProfile: React.FC = () => {
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                     ></iframe>
-                    
                     {isBlurred && (
                       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-2xl p-8 text-center transition-all group-hover:bg-black/70">
-                        <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mb-6 border border-white/20 shadow-2xl transform group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-eye-slash text-white text-3xl"></i>
+                        <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-6 border border-white/20 shadow-2xl transform group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-eye-slash text-white text-2xl"></i>
                         </div>
-                        <h3 className="text-white text-2xl font-black mb-2 tracking-tight">Protected Content</h3>
-                        <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mb-10">Creator has marked this as sensitive</p>
-                        <button 
-                          onClick={() => setRevealedNSFW(prev => ({ ...prev, [link.id]: true }))}
-                          className="bg-white text-black px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-[0_20px_40px_-10px_rgba(255,255,255,0.3)] hover:scale-105 transition-all active:scale-95"
-                        >
-                          Unlock Media
-                        </button>
+                        <h3 className="text-white text-xl font-black mb-2 tracking-tight">NSFW Content</h3>
+                        <button onClick={() => setRevealedNSFW(prev => ({ ...prev, [link.id]: true }))} className="bg-white text-black px-10 py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl">Unlock Media</button>
                       </div>
                     )}
                   </div>
-                  <div className="p-8 md:p-12 text-center space-y-8 bg-gradient-to-b from-white to-slate-50">
-                     <div className="space-y-4">
-                        <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight px-2">
-                          {promo ? (promo.viralTitle || promo.caption) : link.title}
-                        </h2>
-                        {(promo?.viralDescription || link.viralDescription) && (
-                          <p className="text-slate-500 text-sm font-medium leading-relaxed whitespace-pre-wrap line-clamp-3 px-4 italic opacity-80">
-                            {promo?.viralDescription || link.viralDescription}
-                          </p>
-                        )}
+                  <div className="p-8 text-center space-y-6 bg-gradient-to-b from-white to-slate-50">
+                     <div className="space-y-2">
+                        <h2 className="text-2xl font-black text-slate-900 leading-tight px-2">{promo ? promo.viralTitle : link.title}</h2>
+                        <p className="text-slate-500 text-xs font-medium leading-relaxed italic line-clamp-3 px-4">{promo ? promo.viralDescription : link.viralDescription}</p>
                      </div>
-                     <div className="flex flex-col gap-3">
-                       <a 
-                        href={link.url}
-                        target="_blank"
-                        className="block w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:shadow-indigo-500/20 hover:bg-indigo-600 transition-all active:scale-[0.98]"
-                       >
-                        {promo ? 'View Featured Offer' : 'Watch Full Experience'}
-                       </a>
-                       <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Powered by Vendo Smart Engine</p>
-                     </div>
+                     <a href={link.url} target="_blank" className="block w-full bg-slate-900 text-white py-4 rounded-2xl font-black shadow-xl hover:bg-indigo-600 transition-all">View Full Campaign</a>
                   </div>
                 </div>
               );
@@ -229,65 +190,27 @@ const PublicProfile: React.FC = () => {
           </div>
         )}
 
-        {/* Standard Links Stack */}
         <div className="w-full space-y-4 px-2">
           {activeLinks.map((link) => {
              const favicon = getFaviconUrl(link.url);
              const isNSFWBlocked = link.isNSFW && !revealedNSFW[link.id];
-
-             if (link.type === 'newsletter') {
-               return (
-                 <div key={link.id} className={`w-full p-8 rounded-[2rem] shadow-xl border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor}`}>
-                    <h3 className="text-xl font-black mb-4 text-center">{link.title}</h3>
-                    {subscribed ? (
-                      <div className="text-center font-bold text-green-400 py-2">Success! You're on the list. ✨</div>
-                    ) : (
-                      <form onSubmit={(e) => { e.preventDefault(); setSubscribed(true); }} className="space-y-3">
-                        <input 
-                          type="email" required placeholder="Email Address"
-                          className={`w-full rounded-xl px-5 py-3.5 font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-500 transition-all ${theme.inputBg}`}
-                        />
-                        <button type="submit" className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-black text-sm hover:scale-[1.02] transition-all shadow-lg">JOIN NOW</button>
-                      </form>
-                    )}
-                 </div>
-               );
-             }
-
              return (
               <div key={link.id} className="relative">
                 <a
                   href={isNSFWBlocked ? '#' : (link.url.startsWith('http') ? link.url : `https://${link.url}`)}
-                  onClick={(e) => {
-                    if (isNSFWBlocked) {
-                      e.preventDefault();
-                      setRevealedNSFW(prev => ({ ...prev, [link.id]: true }));
-                    }
-                  }}
+                  onClick={(e) => { if (isNSFWBlocked) { e.preventDefault(); setRevealedNSFW(prev => ({ ...prev, [link.id]: true })); } }}
                   target={isNSFWBlocked ? undefined : "_blank"} 
                   rel="noopener noreferrer"
                   className={`group w-full py-5 px-6 rounded-[2rem] flex items-center justify-between font-black shadow-xl transition-all hover:scale-[1.02] active:scale-95 border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor} ${link.isFeatured ? 'ring-2 ring-white/40' : ''}`}
                 >
-                  <div className={`flex items-center gap-4 min-w-0 transition-all ${isNSFWBlocked ? 'blur-sm grayscale' : ''}`}>
+                  <div className={`flex items-center gap-4 min-w-0 ${isNSFWBlocked ? 'blur-sm grayscale' : ''}`}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm p-1.5 overflow-hidden">
-                      {link.thumbnailUrl ? (
-                         <img src={link.thumbnailUrl} className="w-full h-full object-cover" alt="" />
-                      ) : favicon ? (
-                        <img src={favicon} className="w-full h-full object-contain rounded-md" alt="" />
-                      ) : (
-                        <i className={`fa-solid ${link.type === 'shop' ? 'fa-bag-shopping' : link.type === 'video' ? 'fa-play' : 'fa-link'} text-slate-400`}></i>
-                      )}
+                      {link.thumbnailUrl ? <img src={link.thumbnailUrl} className="w-full h-full object-cover" /> : favicon ? <img src={favicon} className="w-full h-full object-contain" /> : <i className="fa-solid fa-link text-slate-400"></i>}
                     </div>
                     <span className="text-lg truncate">{link.title}</span>
                   </div>
-                  
                   <div className="flex items-center gap-3">
-                    {isNSFWBlocked && (
-                      <span className="text-[10px] bg-red-500 text-white px-3 py-1 rounded-full uppercase tracking-widest font-black flex items-center gap-2">
-                        <i className="fa-solid fa-eye-slash"></i> NSFW
-                      </span>
-                    )}
-                    {link.price && !isNSFWBlocked && <span className="text-xs bg-black/10 px-3 py-1 rounded-full">{link.price}</span>}
+                    {isNSFWBlocked && <span className="text-[9px] bg-red-500 text-white px-3 py-1 rounded-full uppercase font-black"><i className="fa-solid fa-eye-slash mr-1"></i> NSFW</span>}
                     <i className="fa-solid fa-chevron-right text-xs opacity-20 group-hover:opacity-100 transition-all"></i>
                   </div>
                 </a>
@@ -295,19 +218,8 @@ const PublicProfile: React.FC = () => {
              );
           })}
         </div>
-
         {profile.socialsPosition === 'bottom' && <SocialHub />}
-
-        <div className="mt-20 flex flex-col items-center gap-4 opacity-30 hover:opacity-100 transition-opacity">
-          <div className={`text-[9px] font-black tracking-[0.4em] uppercase ${theme.textColor}`}>Powered by</div>
-          <div className="flex items-center gap-2">
-             <div className="bg-indigo-600 p-1.5 rounded-lg">
-                <i className="fa-solid fa-bolt text-white text-xs"></i>
-             </div>
-             <span className={`text-xl font-black tracking-tighter ${theme.textColor}`}>vendo.bio</span>
-          </div>
-        </div>
-
+        <div className={`mt-20 flex flex-col items-center gap-2 opacity-30 ${theme.textColor}`}><div className="text-[9px] font-black tracking-[0.4em] uppercase">Built with Vendo.Bio</div><div className="bg-indigo-600 p-1.5 rounded-lg"><i className="fa-solid fa-bolt text-white text-[10px]"></i></div></div>
       </div>
     </div>
   );

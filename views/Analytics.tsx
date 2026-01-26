@@ -14,7 +14,7 @@ const data = [
 
 const Analytics: React.FC = () => {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <p className="text-gray-500 text-sm font-medium">Total Views</p>
@@ -42,17 +42,33 @@ const Analytics: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <h2 className="text-xl font-bold mb-8 text-gray-800">Traffic Overview</h2>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
+        {/* Parent container must have a defined height and relative position for ResponsiveContainer to calculate dimensions correctly */}
+        <div className="h-[300px] w-full relative min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fill: '#9ca3af', fontSize: 10}} 
+                dy={10} 
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fill: '#9ca3af', fontSize: 10}} 
+              />
               <Tooltip 
                 cursor={{fill: '#f9fafb'}}
-                contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                contentStyle={{
+                  borderRadius: '16px', 
+                  border: 'none', 
+                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                  fontSize: '12px'
+                }}
               />
               <Bar dataKey="views" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={20} />
               <Bar dataKey="clicks" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={20} />

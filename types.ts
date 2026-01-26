@@ -14,6 +14,7 @@ export interface Link {
   isNSFW?: boolean;
   thumbnailUrl?: string;
   viralDescription?: string;
+  origin?: 'promo' | 'manual'; // Track where the link came from
 }
 
 export interface ClipSuggestion {
@@ -28,7 +29,7 @@ export interface ClipSuggestion {
 
 export interface PlatformStatus {
   name: 'tiktok' | 'instagram' | 'youtube_shorts' | 'twitter' | 'threads' | 'facebook';
-  status: 'draft' | 'scheduled' | 'published';
+  status: 'draft' | 'scheduled' | 'published' | 'publishing';
   publishedAt?: string;
 }
 
@@ -42,7 +43,7 @@ export interface PromoData {
   viralTitle: string;
   viralDescription: string;
   thumbnailUrl?: string;
-  platformThumbnails?: Record<string, string>; // Maps platform name to unique thumbnail data
+  platformThumbnails?: Record<string, string>;
   targetUrl: string;
   platforms: PlatformStatus[];
   status: 'published' | 'draft' | 'publishing';

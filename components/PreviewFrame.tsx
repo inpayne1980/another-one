@@ -40,7 +40,13 @@ const getPlatformFavicon = (platform: string) => {
 const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
   const theme = THEMES.find(t => t.id === profile.themeId) || THEMES[0];
   
-  const promos: PromoData[] = JSON.parse(localStorage.getItem('lp_promos') || '[]');
+  let promos: PromoData[] = [];
+  try {
+    promos = JSON.parse(localStorage.getItem('lp_promos') || '[]');
+  } catch (e) {
+    console.error("Failed to parse promos for preview", e);
+  }
+
   const activeHeroLinks = links.filter(l => l.active && l.isHeroVideo);
   const activeLinks = links.filter(l => l.active && !l.isHeroVideo);
 
@@ -57,6 +63,7 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
     : {};
 
   const SocialHub = () => {
+    if (!profile.socials) return null;
     const activeSocials = Object.entries(profile.socials).filter(([_, h]) => typeof h === 'string' && h.trim() !== '');
     if (activeSocials.length === 0) return null;
 
@@ -122,7 +129,7 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
             {activeHeroLinks.length > 0 && (
               <div className="w-full space-y-4 mb-6">
                 {activeHeroLinks.map(link => {
-                  const promo = promos.find(p => p.id === link.id);
+                  const promo = Array.isArray(promos) ? promos.find(p => p.id === link.id) : null;
                   const ytId = extractYouTubeId(link.url);
                   if (!ytId && !promo) return null;
                   const vId = promo ? promo.videoId : ytId;
