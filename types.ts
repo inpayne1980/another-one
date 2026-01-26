@@ -26,6 +26,12 @@ export interface ClipSuggestion {
   reasoning: string;
 }
 
+export interface PlatformStatus {
+  name: 'tiktok' | 'instagram' | 'youtube_shorts' | 'twitter' | 'threads';
+  status: 'draft' | 'scheduled' | 'published';
+  publishedAt?: string;
+}
+
 export interface PromoData {
   id: string;
   youtubeUrl: string;
@@ -37,8 +43,9 @@ export interface PromoData {
   viralDescription: string;
   thumbnailUrl?: string;
   targetUrl: string;
-  platforms: string[];
+  platforms: PlatformStatus[];
   status: 'published' | 'draft' | 'publishing';
+  createdAt: string;
 }
 
 export interface UserProfile {
