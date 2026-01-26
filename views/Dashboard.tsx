@@ -15,13 +15,6 @@ const getFaviconUrl = (url: string) => {
   }
 };
 
-const SOCIAL_PRESETS = [
-  { name: 'Instagram', icon: 'fa-instagram', color: 'hover:text-pink-600', url: 'instagram.com/' },
-  { name: 'TikTok', icon: 'fa-tiktok', color: 'hover:text-black', url: 'tiktok.com/@' },
-  { name: 'YouTube', icon: 'fa-youtube', color: 'hover:text-red-600', url: 'youtube.com/@' },
-  { name: 'Twitter', icon: 'fa-x-twitter', color: 'hover:text-zinc-800', url: 'twitter.com/' },
-];
-
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [links, setLinks] = useState<Link[]>(() => {
@@ -56,7 +49,6 @@ const Dashboard: React.FC = () => {
 
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [rewritingId, setRewritingId] = useState<string | null>(null);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('lp_links', JSON.stringify(links));
@@ -73,11 +65,11 @@ const Dashboard: React.FC = () => {
     setRewritingId(null);
   };
 
-  const addLink = (type: LinkType = 'standard', preset?: { name: string, url: string }) => {
+  const addLink = (type: LinkType = 'standard') => {
     const newLink: Link = {
       id: Date.now().toString(),
-      title: preset ? preset.name : (type === 'shop' ? 'Featured Product' : type === 'tip' ? 'Support My Work' : 'New Link'),
-      url: preset ? `https://${preset.url}` : 'https://',
+      title: type === 'shop' ? 'Featured Product' : type === 'tip' ? 'Support My Work' : 'New Link',
+      url: 'https://',
       active: true,
       clicks: 0,
       type: type,
@@ -90,7 +82,12 @@ const Dashboard: React.FC = () => {
     setLinks(links.map(l => l.id === id ? { ...l, ...updates } : l));
   };
 
-  const removeLink = (id: string) => setLinks(links.filter(l => l.id !== id));
+  const removeLink = (id: string) => {
+    setLinks(links.filter(l => l.id !== id));
+    // Also cleanup promo data if it's a video
+    const promos = JSON.parse(localStorage.getItem('lp_promos') || '[]');
+    localStorage.setItem('lp_promos', JSON.stringify(promos.filter((p: any) => p.id !== id)));
+  };
 
   const moveLink = (index: number, direction: 'up' | 'down') => {
     const newLinks = [...links];
@@ -103,13 +100,13 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col lg:flex-row gap-10">
-      <div className="flex-1 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex-1 space-y-6 animate-in fade-in duration-500">
         
         {/* Profile Command Center */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
           <div className="flex flex-col md:flex-row items-start gap-8">
             <div className="relative group shrink-0">
-              <img src={profile.avatarUrl} alt="Avatar" className="w-28 h-28 rounded-3xl object-cover ring-4 ring-slate-50 group-hover:opacity-90 transition-all" />
+              <img src={profile.avatarUrl} alt="Avatar" className="w-28 h-28 rounded-3xl object-cover ring-4 ring-slate-50 group-hover:opacity-90 transition-all shadow-xl" />
               <label className="absolute -bottom-2 -right-2 bg-indigo-600 text-white w-10 h-10 rounded-2xl flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
                 <i className="fa-solid fa-camera"></i>
                 <input type="file" className="hidden" />
@@ -123,12 +120,6 @@ const Dashboard: React.FC = () => {
                   className="text-3xl font-black text-slate-900 bg-transparent border-none p-0 focus:ring-0 w-full"
                   placeholder="Your Name"
                 />
-                <button 
-                  onClick={() => navigate('/appearance')}
-                  className="bg-slate-50 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold border border-slate-100 hover:bg-white hover:shadow-sm"
-                >
-                  <i className="fa-solid fa-swatchbook mr-2"></i> Theme: Midnight Glass
-                </button>
               </div>
               <div className="relative">
                 <textarea 
@@ -148,7 +139,7 @@ const Dashboard: React.FC = () => {
                   className="absolute bottom-4 right-4 bg-indigo-600 text-white px-5 py-2 rounded-2xl text-xs font-bold hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100 disabled:opacity-50"
                 >
                   <i className={`fa-solid ${isOptimizing ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`}></i>
-                  {isOptimizing ? 'Working...' : 'AI Rewrite Bio'}
+                  {isOptimizing ? 'Refining...' : 'AI Rewrite Bio'}
                 </button>
               </div>
             </div>
@@ -177,7 +168,12 @@ const Dashboard: React.FC = () => {
         {/* Links Editor */}
         <div className="space-y-4">
           {links.map((link, index) => (
-            <div key={link.id} className="bg-white p-6 rounded-[2rem] border-2 border-slate-100 flex gap-6 group hover:border-indigo-100 transition-all">
+            <div 
+              key={link.id} 
+              className={`bg-white p-6 rounded-[2rem] border-2 flex gap-6 group transition-all ${
+                link.isHeroVideo ? 'border-indigo-100 bg-indigo-50/20' : 'border-slate-100 hover:border-indigo-100'
+              }`}
+            >
               <div className="flex flex-col items-center justify-center gap-3">
                 <button onClick={() => moveLink(index, 'up')} disabled={index === 0} className="text-slate-300 hover:text-indigo-600 disabled:opacity-20"><i className="fa-solid fa-chevron-up text-xl"></i></button>
                 <button onClick={() => moveLink(index, 'down')} disabled={index === links.length - 1} className="text-slate-300 hover:text-indigo-600 disabled:opacity-20"><i className="fa-solid fa-chevron-down text-xl"></i></button>
@@ -186,6 +182,11 @@ const Dashboard: React.FC = () => {
               <div className="flex-1 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 w-full">
+                    {link.isHeroVideo && (
+                      <div className="bg-indigo-600 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shrink-0">
+                        <i className="fa-solid fa-video mr-1"></i> Video
+                      </div>
+                    )}
                     <input 
                       value={link.title}
                       onChange={(e) => updateLink(link.id, { title: e.target.value })}
@@ -195,7 +196,7 @@ const Dashboard: React.FC = () => {
                     <button 
                       onClick={() => handleRewriteTitle(link.id, link.title)}
                       disabled={rewritingId === link.id}
-                      className="text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors"
+                      className="text-indigo-600 p-2 hover:bg-indigo-100 rounded-lg transition-colors"
                       title="AI Rewrite for higher CTR"
                     >
                       <i className={`fa-solid ${rewritingId === link.id ? 'fa-spinner fa-spin' : 'fa-sparkles'}`}></i>
@@ -208,7 +209,7 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3">
+                  <div className="flex-1 flex items-center gap-3 bg-white/50 border border-slate-200 rounded-2xl px-5 py-3 shadow-sm">
                     <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
                       {getFaviconUrl(link.url) ? <img src={getFaviconUrl(link.url)!} className="w-5 h-5" alt="" /> : <i className="fa-solid fa-link text-slate-400"></i>}
                     </div>
@@ -232,10 +233,10 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                    <div className="flex items-center gap-6 text-[11px] font-bold uppercase tracking-widest text-slate-500">
                       <span className="flex items-center gap-2 text-indigo-600"><i className="fa-solid fa-chart-simple"></i> {link.clicks} clicks</span>
-                      <button onClick={() => updateLink(link.id, { isFeatured: !link.isFeatured })} className={`${link.isFeatured ? 'text-amber-500' : 'hover:text-slate-900'} transition-colors flex items-center gap-2`}><i className="fa-solid fa-star"></i> Feature</button>
+                      <button onClick={() => updateLink(link.id, { isFeatured: !link.isFeatured })} className={`${link.isFeatured ? 'text-amber-500' : 'hover:text-slate-900'} transition-colors flex items-center gap-2`}><i className="fa-solid fa-star"></i> {link.isFeatured ? 'Featured' : 'Highlight'}</button>
                       <button onClick={() => removeLink(link.id)} className="text-slate-300 hover:text-red-500 transition-colors"><i className="fa-solid fa-trash-can"></i> Delete</button>
                    </div>
                 </div>

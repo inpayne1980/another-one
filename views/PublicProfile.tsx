@@ -40,7 +40,7 @@ const PublicProfile: React.FC = () => {
     const savedPromos = localStorage.getItem('lp_promos');
     
     if (savedProfile) setProfile(JSON.parse(savedProfile));
-    if (savedLinks) setLinks(JSON.parse(savedLinks).filter((l: Link) => l.active));
+    if (savedLinks) setLinks(JSON.parse(savedLinks)); // Load all links including inactive for matching
     if (savedPromos) setPromos(JSON.parse(savedPromos));
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -56,6 +56,15 @@ const PublicProfile: React.FC = () => {
   );
 
   const theme = THEMES.find(t => t.id === profile.themeId) || THEMES[0];
+
+  // Derive which promos should actually show based on active links with isHeroVideo=true
+  const activePromos = links
+    .filter(l => l.active && l.isHeroVideo)
+    .map(l => promos.find(p => p.id === l.id))
+    .filter((p): p is PromoData => !!p);
+
+  // Derive standard links (non-video or video toggled off)
+  const activeLinks = links.filter(l => l.active && !l.isHeroVideo);
 
   const SocialHub = () => {
     const activeSocials = Object.entries(profile.socials).filter(([_, h]) => typeof h === 'string' && h.trim() !== '');
@@ -149,11 +158,11 @@ const PublicProfile: React.FC = () => {
 
         {profile.socialsPosition === 'top' && <SocialHub />}
 
-        {/* Video Promos Grid - High impact section */}
-        {promos.length > 0 && (
-          <div className="w-full space-y-8 mb-8">
-            {promos.map(promo => (
-              <div key={promo.id} className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10">
+        {/* Video Promos Grid - Derives from linked Active Hero Video Links */}
+        {activePromos.length > 0 && (
+          <div className="w-full space-y-8 mb-8 px-2">
+            {activePromos.map(promo => (
+              <div key={promo.id} className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="aspect-[9/16] relative bg-black">
                   <iframe
                     src={`https://www.youtube.com/embed/${promo.videoId}?start=${promo.clipStart}&end=${promo.clipEnd}&autoplay=0&mute=1&modestbranding=1&rel=0`}
@@ -178,7 +187,7 @@ const PublicProfile: React.FC = () => {
         )}
 
         <div className="w-full space-y-4 px-2">
-          {links.map((link) => {
+          {activeLinks.map((link) => {
              const favicon = getFaviconUrl(link.url);
              if (link.type === 'newsletter') {
                return (

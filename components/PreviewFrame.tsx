@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { UserProfile, Link, THEMES } from '../types';
+import { UserProfile, Link, THEMES, PromoData } from '../types';
 
 interface PreviewFrameProps {
   profile: UserProfile;
@@ -33,7 +33,15 @@ const getPlatformFavicon = (platform: string) => {
 
 const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
   const theme = THEMES.find(t => t.id === profile.themeId) || THEMES[0];
-  const activeLinks = links.filter(l => l.active);
+  
+  // Logic to show active promos in preview
+  const promos: PromoData[] = JSON.parse(localStorage.getItem('lp_promos') || '[]');
+  const activePromos = links
+    .filter(l => l.active && l.isHeroVideo)
+    .map(l => promos.find(p => p.id === l.id))
+    .filter((p): p is PromoData => !!p);
+
+  const activeLinks = links.filter(l => l.active && !l.isHeroVideo);
 
   const bgStyle: React.CSSProperties = profile.backgroundType === 'color' 
     ? { backgroundColor: profile.backgroundColor } 
@@ -111,6 +119,25 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
             </p>
 
             {profile.socialsPosition === 'top' && <SocialHub />}
+
+            {/* Video Promos In Preview */}
+            {activePromos.length > 0 && (
+              <div className="w-full space-y-4 mb-4">
+                {activePromos.map(promo => (
+                  <div key={promo.id} className="bg-white rounded-2xl overflow-hidden shadow-lg border border-white/10">
+                    <div className="aspect-[9/16] relative bg-black">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                         <i className="fa-solid fa-play text-white/50 text-2xl"></i>
+                      </div>
+                      <img src={`https://img.youtube.com/vi/${promo.videoId}/hqdefault.jpg`} className="absolute inset-0 w-full h-full object-cover opacity-30" alt="" />
+                    </div>
+                    <div className="p-3 text-center">
+                       <p className="text-[10px] font-black text-slate-900 truncate">"{promo.caption}"</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="w-full space-y-3">
               {activeLinks.map(link => (
