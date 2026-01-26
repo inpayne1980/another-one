@@ -10,6 +10,7 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, username }) => {
   const navItems = [
     { icon: 'fa-link', label: 'Links', path: '/' },
+    { icon: 'fa-video', label: 'Smart Promos', path: '/video-engine' },
     { icon: 'fa-palette', label: 'Appearance', path: '/appearance' },
     { icon: 'fa-chart-line', label: 'Analytics', path: '/analytics' },
     { icon: 'fa-gear', label: 'Settings', path: '/settings' },

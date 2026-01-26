@@ -6,6 +6,7 @@ import Dashboard from './views/Dashboard';
 import Appearance from './views/Appearance';
 import Analytics from './views/Analytics';
 import Settings from './views/Settings';
+import VideoEngine from './views/VideoEngine';
 import PublicProfile from './views/PublicProfile';
 import LandingPage from './views/LandingPage';
 
@@ -15,13 +16,16 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <Routes>
-        {/* Marketing / Entry Route */}
         <Route path="/welcome" element={<LandingPage />} />
         
-        {/* Dashboard Routes (SaaS App) */}
         <Route path="/" element={
           <DashboardLayout username={username}>
             <Dashboard />
+          </DashboardLayout>
+        } />
+        <Route path="/video-engine" element={
+          <DashboardLayout username={username}>
+            <VideoEngine />
           </DashboardLayout>
         } />
         <Route path="/appearance" element={
@@ -40,10 +44,7 @@ const App: React.FC = () => {
           </DashboardLayout>
         } />
         
-        {/* Public Profile Route */}
         <Route path="/p/:username" element={<PublicProfile />} />
-        
-        {/* Navigation Utilities */}
         <Route path="/preview" element={<Navigate to={`/p/${username}`} replace />} />
         <Route path="*" element={<Navigate to="/welcome" replace />} />
       </Routes>
