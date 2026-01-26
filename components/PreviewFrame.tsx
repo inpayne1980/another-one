@@ -5,11 +5,12 @@ import { UserProfile, Link, THEMES, PromoData } from '../types';
 interface PreviewFrameProps {
   profile: UserProfile;
   links: Link[];
+  promos?: PromoData[]; // Made promos an explicit prop for synchronization
 }
 
 const getFaviconUrl = (url: string) => {
   try {
-    if (!url || url === 'https://' || url === 'http://') return null;
+    if (!url || typeof url !== 'string' || url === 'https://' || url === 'http://') return null;
     const cleanUrl = url.startsWith('http') ? url : `https://${url}`;
     const domain = new URL(cleanUrl).hostname;
     if (!domain || domain.length < 4) return null;
@@ -20,9 +21,10 @@ const getFaviconUrl = (url: string) => {
 };
 
 const extractYouTubeId = (url: string): string | null => {
+  if (!url || typeof url !== 'string') return null;
   const regExp = /^.*(youtu\.be\/|v\/|u\/\\w\/|embed\/|watch\\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
+  return (match && match[2] && match[2].length === 11) ? match[2] : null;
 };
 
 const getPlatformFavicon = (platform: string) => {
@@ -37,22 +39,25 @@ const getPlatformFavicon = (platform: string) => {
   return `https://www.google.com/s2/favicons?domain=${domainMap[platform] || platform + '.com'}&sz=128`;
 };
 
-const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
-  const theme = THEMES.find(t => t.id === profile.themeId) || THEMES[0];
+const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links = [], promos = [] }) => {
+  const theme = THEMES.find(t => t.id === profile?.themeId) || THEMES[0];
   
-  let promos: PromoData[] = [];
-  try {
-    promos = JSON.parse(localStorage.getItem('lp_promos') || '[]');
-  } catch (e) {
-    console.error("Failed to parse promos for preview", e);
-  }
+  // Use passed promos prop, fallback to localStorage ONLY if not provided
+  const safePromos = Array.isArray(promos) && promos.length > 0 
+    ? promos 
+    : (() => {
+        try {
+          const stored = localStorage.getItem('lp_promos');
+          return stored ? JSON.parse(stored) : [];
+        } catch { return []; }
+      })();
 
-  const activeHeroLinks = links.filter(l => l.active && l.isHeroVideo);
-  const activeLinks = links.filter(l => l.active && !l.isHeroVideo);
+  const activeHeroLinks = links.filter(l => l && l.active && l.isHeroVideo);
+  const activeLinks = links.filter(l => l && l.active && !l.isHeroVideo);
 
-  const bgStyle: React.CSSProperties = profile.backgroundType === 'color' 
+  const bgStyle: React.CSSProperties = profile?.backgroundType === 'color' 
     ? { backgroundColor: profile.backgroundColor } 
-    : profile.backgroundType === 'image' 
+    : profile?.backgroundType === 'image' 
     ? { 
         backgroundImage: `url(${profile.backgroundImage})`, 
         backgroundSize: 'cover', 
@@ -63,7 +68,7 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
     : {};
 
   const SocialHub = () => {
-    if (!profile.socials) return null;
+    if (!profile?.socials) return null;
     const activeSocials = Object.entries(profile.socials).filter(([_, h]) => typeof h === 'string' && h.trim() !== '');
     if (activeSocials.length === 0) return null;
 
@@ -102,34 +107,33 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-40"></div>
         
         <div className="relative w-full h-full bg-white overflow-hidden flex flex-col">
-          <div className={`absolute inset-0 transition-all duration-700 ${profile.backgroundType === 'theme' ? theme.background : ''}`} style={bgStyle} />
-          {profile.backgroundType === 'image' && (
+          <div className={`absolute inset-0 transition-all duration-700 ${profile?.backgroundType === 'theme' ? theme.background : ''}`} style={bgStyle} />
+          {profile?.backgroundType === 'image' && (
             <div className="absolute inset-0 pointer-events-none z-[1] bg-black/30" style={{ opacity: profile.backgroundOpacity || 0.3 }} />
           )}
 
           <div className="relative z-10 w-full h-full overflow-y-auto no-scrollbar p-6 text-center flex flex-col items-center">
             <div className="mt-10 mb-4">
               <img 
-                src={profile.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`} 
+                src={profile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.username || 'user'}`} 
                 className="w-20 h-20 rounded-[1.8rem] border-2 border-white/30 object-cover shadow-2xl"
                 alt=""
               />
             </div>
             
             <h2 className={`font-black text-base mb-1 tracking-tight ${theme.textColor}`}>
-              {profile.displayName || `@${profile.username}`}
+              {profile?.displayName || `@${profile?.username || 'user'}`}
             </h2>
             <p className={`text-[10px] opacity-80 mb-6 font-bold leading-tight max-w-[180px] ${theme.textColor}`}>
-              {profile.bio}
+              {profile?.bio}
             </p>
 
-            {profile.socialsPosition === 'top' && <SocialHub />}
+            {profile?.socialsPosition === 'top' && <SocialHub />}
 
-            {/* Video Hero Promos In Preview - Sized to aspect-video for mobile realism */}
             {activeHeroLinks.length > 0 && (
               <div className="w-full space-y-4 mb-6">
                 {activeHeroLinks.map(link => {
-                  const promo = Array.isArray(promos) ? promos.find(p => p.id === link.id) : null;
+                  const promo = Array.isArray(safePromos) ? safePromos.find(p => p && p.id === link.id) : null;
                   const ytId = extractYouTubeId(link.url);
                   if (!ytId && !promo) return null;
                   const vId = promo ? promo.videoId : ytId;
@@ -160,30 +164,33 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
             )}
 
             <div className="w-full space-y-3">
-              {activeLinks.map(link => (
-                <div 
-                  key={link.id} 
-                  className={`relative w-full py-3.5 px-4 ${theme.buttonRadius} flex items-center justify-between text-[11px] font-black shadow-lg border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor} ${link.isFeatured ? 'ring-2 ring-white/40' : ''}`}
-                >
-                  <div className={`flex items-center gap-3 truncate ${link.isNSFW ? 'blur-[2px] opacity-50' : ''}`}>
-                    <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 p-1 shadow-sm">
-                      {getFaviconUrl(link.url) ? (
-                        <img src={getFaviconUrl(link.url)!} className="w-full h-full object-contain" alt="" />
-                      ) : (
-                        <i className={`fa-solid ${link.type === 'shop' ? 'fa-bag-shopping' : link.type === 'video' ? 'fa-play' : 'fa-link'} text-slate-300`}></i>
-                      )}
+              {activeLinks.map(link => {
+                const favicon = getFaviconUrl(link.url);
+                return (
+                  <div 
+                    key={link.id} 
+                    className={`relative w-full py-3.5 px-4 ${theme.buttonRadius} flex items-center justify-between text-[11px] font-black shadow-lg border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor} ${link.isFeatured ? 'ring-2 ring-white/40' : ''}`}
+                  >
+                    <div className={`flex items-center gap-3 truncate ${link.isNSFW ? 'blur-[2px] opacity-50' : ''}`}>
+                      <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 p-1 shadow-sm">
+                        {favicon ? (
+                          <img src={favicon} className="w-full h-full object-contain" alt="" />
+                        ) : (
+                          <i className={`fa-solid ${link.type === 'shop' ? 'fa-bag-shopping' : link.type === 'video' ? 'fa-play' : 'fa-link'} text-slate-300`}></i>
+                        )}
+                      </div>
+                      <span className="truncate">{link.title}</span>
                     </div>
-                    <span className="truncate">{link.title}</span>
+                    <div className="flex items-center gap-2">
+                      {link.isNSFW && <i className="fa-solid fa-eye-slash text-red-400 text-[10px]"></i>}
+                      {link.price && <span className="text-[9px] bg-black/10 px-2 py-0.5 rounded-md">{link.price}</span>}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {link.isNSFW && <i className="fa-solid fa-eye-slash text-red-400 text-[10px]"></i>}
-                    {link.price && <span className="text-[9px] bg-black/10 px-2 py-0.5 rounded-md">{link.price}</span>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {profile.socialsPosition === 'bottom' && <SocialHub />}
+            {profile?.socialsPosition === 'bottom' && <SocialHub />}
 
             <div className={`mt-auto pt-10 text-[9px] font-black tracking-[0.2em] opacity-30 ${theme.textColor}`}>VENDO.BIO PRO</div>
           </div>

@@ -18,7 +18,6 @@ const VideoEngine: React.FC = () => {
   const [thumbnailText, setThumbnailText] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   
-  // Local state for Preview synchronization
   const [profile, setProfile] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('lp_profile');
     return saved ? JSON.parse(saved) : {
@@ -46,22 +45,16 @@ const VideoEngine: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Platform selection for initial deployment
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['tiktok', 'instagram', 'youtube_shorts', 'twitter', 'facebook']);
-
-  // Modal state
-  const [activeKitPromo, setActiveKitPromo] = useState<PromoData | null>(null);
-  const [kitPlatform, setKitPlatform] = useState<PlatformStatus['name']>('tiktok');
-
   const [promos, setPromos] = useState<PromoData[]>(() => {
     try {
       const saved = localStorage.getItem('lp_promos');
       return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.error("Failed to parse promos from storage", e);
-      return [];
-    }
+    } catch { return []; }
   });
+
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['tiktok', 'instagram', 'youtube_shorts', 'twitter', 'facebook']);
+  const [activeKitPromo, setActiveKitPromo] = useState<PromoData | null>(null);
+  const [kitPlatform, setKitPlatform] = useState<PlatformStatus['name']>('tiktok');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,9 +67,10 @@ const VideoEngine: React.FC = () => {
   }, [links]);
 
   const extractVideoId = (url: string): string | null => {
+    if (!url) return null;
     const regExp = /^.*(youtu\.be\/|v\/|u\/\\w\/|embed\/|watch\\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
+    return (match && match[2] && match[2].length === 11) ? match[2] : null;
   };
 
   const handleAnalyze = async () => {
@@ -200,7 +194,6 @@ const VideoEngine: React.FC = () => {
       setPromos(prev => [newPromo, ...prev]);
       setLinks(prev => [newLink, ...prev]);
 
-      // Reset UI state
       setUrl('');
       setSuggestions([]);
       setSelectedClip(null);
@@ -271,11 +264,6 @@ const VideoEngine: React.FC = () => {
     if (!promo) return;
     
     const draftPlatforms = promo.platforms.filter(pl => pl.status === 'draft').map(pl => pl.name);
-    if (draftPlatforms.length === 0) {
-      alert("All platforms already published!");
-      return;
-    }
-
     for (const pl of draftPlatforms) {
       await handleDeploySingle(promoId, pl as PlatformStatus['name']);
     }
@@ -325,7 +313,6 @@ const VideoEngine: React.FC = () => {
           </div>
         </header>
 
-        {/* Generation Stage */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200 space-y-8">
           <div className="space-y-4">
             <label className="block text-xs font-black uppercase tracking-widest text-gray-400">Step 1: Content Source</label>
@@ -504,7 +491,6 @@ const VideoEngine: React.FC = () => {
           )}
         </div>
 
-        {/* Social Command Center List (History) */}
         <section className="space-y-8 pt-12">
           <div className="flex items-center justify-between">
              <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Social Command Center</h2>
@@ -541,12 +527,7 @@ const VideoEngine: React.FC = () => {
                     <div className="flex items-center justify-between">
                        <h3 className="text-2xl font-black text-slate-900 truncate max-w-md">{p.viralTitle || "Viral Clip"}</h3>
                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => handleDeployAllForPromo(p.id)}
-                            className="text-[10px] font-black bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all uppercase"
-                          >
-                            Deploy All
-                          </button>
+                          <button onClick={() => handleDeployAllForPromo(p.id)} className="text-[10px] font-black bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all uppercase">Deploy All</button>
                           <button onClick={() => deletePromo(p.id)} className="text-slate-200 hover:text-red-500 transition-colors p-2"><i className="fa-solid fa-trash"></i></button>
                        </div>
                     </div>
@@ -560,31 +541,19 @@ const VideoEngine: React.FC = () => {
                   <div className="mt-8 space-y-4">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Threads</p>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      {p.platforms?.map(platform => {
-                        const isPublishing = platform.status === 'publishing';
-                        const isPublished = platform.status === 'published';
-                        
-                        return (
-                          <button 
-                            key={platform.name}
-                            disabled={isPublishing}
-                            onClick={() => {
-                              if (!isPublished) handleDeploySingle(p.id, platform.name);
-                              else { setActiveKitPromo(p); setKitPlatform(platform.name); }
-                            }}
-                            className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 relative ${
-                              isPublished 
-                                ? 'border-indigo-100 bg-indigo-50 text-indigo-600' 
-                                : isPublishing 
-                                  ? 'border-amber-100 bg-amber-50 text-amber-600 animate-pulse'
-                                  : 'border-slate-50 bg-slate-50 text-slate-400 hover:border-indigo-200'
-                            }`}
-                          >
-                            <div className="text-lg"><PlatformIcon name={platform.name} /></div>
-                            <span className="text-[8px] font-black uppercase">{platform.name?.replace('_', ' ')}</span>
-                          </button>
-                        );
-                      })}
+                      {p.platforms?.map(platform => (
+                        <button 
+                          key={platform.name}
+                          disabled={platform.status === 'publishing'}
+                          onClick={() => platform.status === 'published' ? (setActiveKitPromo(p), setKitPlatform(platform.name)) : handleDeploySingle(p.id, platform.name)}
+                          className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 relative ${
+                            platform.status === 'published' ? 'border-indigo-100 bg-indigo-50 text-indigo-600' : platform.status === 'publishing' ? 'border-amber-100 bg-amber-50 text-amber-600 animate-pulse' : 'border-slate-50 bg-slate-50 text-slate-400 hover:border-indigo-200'
+                          }`}
+                        >
+                          <div className="text-lg"><PlatformIcon name={platform.name} /></div>
+                          <span className="text-[8px] font-black uppercase">{platform.name?.replace('_', ' ')}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -594,17 +563,13 @@ const VideoEngine: React.FC = () => {
         </section>
       </div>
 
-      {/* Side Preview Window */}
       <div className="lg:w-[360px] hidden lg:block">
         <div className="sticky top-10 flex flex-col items-center gap-4">
-          <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100">
-            Live Profile Preview
-          </div>
-          <PreviewFrame profile={profile} links={links} />
+          <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100">Live Profile Preview</div>
+          <PreviewFrame profile={profile} links={links} promos={promos} />
         </div>
       </div>
 
-      {/* Distribution Modal */}
       {activeKitPromo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12">
            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setActiveKitPromo(null)}></div>
@@ -639,33 +604,11 @@ const VideoEngine: React.FC = () => {
                     <div className="space-y-6">
                        <div className="bg-slate-950 rounded-[3rem] overflow-hidden shadow-2xl relative border-[12px] border-slate-900 ring-1 ring-slate-200/10">
                           <div className={`relative w-full ${getPlatformAspect(kitPlatform)} transition-all duration-700 overflow-hidden`}>
-                             <img 
-                              src={activeKitPromo.platformThumbnails?.[kitPlatform] || activeKitPromo.thumbnailUrl || `https://img.youtube.com/vi/${activeKitPromo.videoId}/hqdefault.jpg`} 
-                              className="w-full h-full object-cover transition-all duration-500 animate-in fade-in" 
-                              alt="Platform Thumbnail" 
-                             />
+                             <img src={activeKitPromo.platformThumbnails?.[kitPlatform] || activeKitPromo.thumbnailUrl || `https://img.youtube.com/vi/${activeKitPromo.videoId}/hqdefault.jpg`} className="w-full h-full object-cover transition-all duration-500 animate-in fade-in" alt="Platform Thumbnail" />
                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                             <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between">
-                               <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20">
-                                 <span className="text-[10px] font-black text-white uppercase tracking-widest">Platform: {kitPlatform.toUpperCase()}</span>
-                               </div>
-                               <i className="fa-solid fa-clapperboard text-white/40"></i>
-                             </div>
                           </div>
                        </div>
-                       <div className="flex gap-4">
-                          <button className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-black transition-all">
-                             Download Master
-                          </button>
-                          <button 
-                            onClick={() => navigator.clipboard.writeText(activeKitPromo.targetUrl || '')}
-                            className="bg-indigo-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
-                          >
-                             <i className="fa-solid fa-link"></i>
-                          </button>
-                       </div>
                     </div>
-
                     <div className="space-y-10">
                        <div className="space-y-4">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Optimized Headline</label>
@@ -674,22 +617,12 @@ const VideoEngine: React.FC = () => {
                             <button onClick={() => navigator.clipboard.writeText(activeKitPromo.viralTitle || '')} className="absolute top-4 right-4 text-indigo-400 opacity-0 group-hover:opacity-100 transition-all"><i className="fa-solid fa-copy"></i></button>
                           </div>
                        </div>
-
                        <div className="space-y-4">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Platform Specific Copy</label>
                           <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-600 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto relative group shadow-inner">
                             {activeKitPromo.viralDescription || activeKitPromo.caption}
                             <button onClick={() => navigator.clipboard.writeText(activeKitPromo.viralDescription || '')} className="absolute top-4 right-4 text-indigo-400 opacity-0 group-hover:opacity-100 transition-all"><i className="fa-solid fa-copy"></i></button>
                           </div>
-                       </div>
-
-                       <div className="bg-indigo-50/50 p-8 rounded-[2.5rem] border border-indigo-100 space-y-4 shadow-sm">
-                          <h4 className="font-black text-indigo-900 text-xs uppercase tracking-widest flex items-center gap-2"><i className="fa-solid fa-robot"></i> AI Intel</h4>
-                          <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                             {kitPlatform === 'facebook' 
-                               ? 'Facebook News Feed prioritizes 4:3 and Square assets. Post this unique thumbnail to Community Groups for a 5x higher CTR.' 
-                               : 'This asset is optimized for vertical scroll patterns. Ensure your bio link is the first item in the caption.'}
-                          </p>
                        </div>
                     </div>
                  </div>
