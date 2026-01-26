@@ -1,5 +1,5 @@
 
-export type LinkType = 'standard' | 'shop' | 'tip' | 'newsletter';
+export type LinkType = 'standard' | 'shop' | 'tip' | 'newsletter' | 'video';
 
 export interface Link {
   id: string;

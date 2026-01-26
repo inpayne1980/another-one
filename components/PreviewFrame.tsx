@@ -19,6 +19,12 @@ const getFaviconUrl = (url: string) => {
   }
 };
 
+const extractYouTubeId = (url: string): string | null => {
+  const regExp = /^.*(youtu\.be\/|v\/|u\/\\w\/|embed\/|watch\\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 const getPlatformFavicon = (platform: string) => {
   const domainMap: Record<string, string> = {
     twitter: 'x.com',
@@ -112,25 +118,33 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
 
             {profile.socialsPosition === 'top' && <SocialHub />}
 
-            {/* Video Hero Promos In Preview */}
+            {/* Video Hero Promos In Preview - Sized to aspect-video for mobile realism */}
             {activeHeroLinks.length > 0 && (
               <div className="w-full space-y-4 mb-6">
                 {activeHeroLinks.map(link => {
                   const promo = promos.find(p => p.id === link.id);
-                  if (!promo) return null;
+                  const ytId = extractYouTubeId(link.url);
+                  if (!ytId && !promo) return null;
+                  const vId = promo ? promo.videoId : ytId;
+
                   return (
-                    <div key={link.id} className="bg-white rounded-2xl overflow-hidden shadow-lg border border-white/10 relative">
-                      <div className="aspect-[9/16] relative bg-black">
-                        <img src={`https://img.youtube.com/vi/${promo.videoId}/hqdefault.jpg`} className={`absolute inset-0 w-full h-full object-cover ${link.isNSFW ? 'blur-xl opacity-20' : 'opacity-30'}`} alt="" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                           <i className={`fa-solid ${link.isNSFW ? 'fa-eye-slash' : 'fa-play'} text-white/50 text-2xl`}></i>
+                    <div key={link.id} className="bg-white rounded-2xl overflow-hidden shadow-lg border border-white/10 relative transition-all animate-in slide-in-from-bottom-2">
+                      <div className="aspect-video relative bg-zinc-900">
+                        <img src={`https://img.youtube.com/vi/${vId}/hqdefault.jpg`} className={`absolute inset-0 w-full h-full object-cover ${link.isNSFW ? 'blur-xl opacity-20 scale-110' : 'opacity-40'}`} alt="" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                           <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                             <i className={`fa-solid ${link.isNSFW ? 'fa-eye-slash' : 'fa-play'} text-white text-[10px]`}></i>
+                           </div>
+                           {link.isNSFW && (
+                             <span className="text-[7px] font-black text-white/60 tracking-widest uppercase">NSFW PROTECTED</span>
+                           )}
                         </div>
-                        {link.isNSFW && (
-                          <div className="absolute bottom-2 left-0 right-0 text-[8px] text-white/60 font-black uppercase">NSFW BLUR ACTIVE</div>
-                        )}
                       </div>
-                      <div className="p-3 text-center">
-                         <p className="text-[10px] font-black text-slate-900 truncate">"{promo.caption}"</p>
+                      <div className="p-3 text-center bg-white">
+                         <p className="text-[9px] font-black text-slate-900 truncate leading-none mb-1">
+                           {promo ? (promo.viralTitle || promo.caption) : link.title}
+                         </p>
+                         <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Featured Content</p>
                       </div>
                     </div>
                   );
@@ -149,7 +163,7 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
                       {getFaviconUrl(link.url) ? (
                         <img src={getFaviconUrl(link.url)!} className="w-full h-full object-contain" alt="" />
                       ) : (
-                        <i className={`fa-solid ${link.type === 'shop' ? 'fa-bag-shopping' : 'fa-link'} text-slate-300`}></i>
+                        <i className={`fa-solid ${link.type === 'shop' ? 'fa-bag-shopping' : link.type === 'video' ? 'fa-play' : 'fa-link'} text-slate-300`}></i>
                       )}
                     </div>
                     <span className="truncate">{link.title}</span>

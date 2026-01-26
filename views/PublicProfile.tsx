@@ -15,6 +15,12 @@ const getFaviconUrl = (url: string) => {
   }
 };
 
+const extractYouTubeId = (url: string): string | null => {
+  const regExp = /^.*(youtu\.be\/|v\/|u\/\\w\/|embed\/|watch\\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 const getPlatformFavicon = (platform: string) => {
   const domainMap: Record<string, string> = {
     twitter: 'x.com',
@@ -153,58 +159,69 @@ const PublicProfile: React.FC = () => {
 
         {profile.socialsPosition === 'top' && <SocialHub />}
 
-        {/* Hero Video Section */}
+        {/* Hero Video Section - Professional Window Size */}
         {activeHeroLinks.length > 0 && (
           <div className="w-full space-y-12 mb-16 px-2">
             {activeHeroLinks.map(link => {
               const promo = promos.find(p => p.id === link.id);
-              if (!promo) return null;
+              const ytId = extractYouTubeId(link.url);
+              if (!ytId && !promo) return null;
+              
+              const videoId = promo ? promo.videoId : ytId;
+              const start = promo ? promo.clipStart : 0;
+              const end = promo ? promo.clipEnd : undefined;
+              const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}${end ? `&end=${end}` : ''}&autoplay=0&mute=1&modestbranding=1&rel=0&controls=1`;
+              
               const isBlurred = link.isNSFW && !revealedNSFW[link.id];
 
               return (
-                <div key={link.id} className="group bg-white rounded-[2.5rem] overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.3)] border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                  <div className="aspect-[9/16] relative bg-black overflow-hidden">
+                <div key={link.id} className="group bg-white rounded-[2.5rem] overflow-hidden shadow-[0_30px_100px_-20px_rgba(0,0,0,0.5)] border border-white/10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+                  {/* Correct Hero Aspect Ratio (16:9 for Standard / 4:5 for high impact) */}
+                  <div className="aspect-video relative bg-zinc-950 overflow-hidden shadow-inner">
                     <iframe
-                      src={`https://www.youtube.com/embed/${promo.videoId}?start=${promo.clipStart}&end=${promo.clipEnd}&autoplay=0&mute=1&modestbranding=1&rel=0`}
-                      className={`absolute inset-0 w-full h-full transition-all duration-700 ${isBlurred ? 'blur-3xl scale-110 opacity-30' : 'blur-0 opacity-100'}`}
+                      src={embedUrl}
+                      className={`absolute inset-0 w-full h-full transition-all duration-1000 ${isBlurred ? 'blur-3xl scale-125 opacity-30' : 'blur-0 opacity-100'}`}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                     ></iframe>
                     
                     {isBlurred && (
-                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xl p-8 text-center transition-all group-hover:bg-black/50">
-                        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-6 border border-white/20">
-                          <i className="fa-solid fa-eye-slash text-white text-2xl"></i>
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-2xl p-8 text-center transition-all group-hover:bg-black/70">
+                        <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mb-6 border border-white/20 shadow-2xl transform group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-eye-slash text-white text-3xl"></i>
                         </div>
-                        <h3 className="text-white text-2xl font-black mb-2 tracking-tight">Sensitive Content</h3>
-                        <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-10">This video may contain content that some viewers find sensitive.</p>
+                        <h3 className="text-white text-2xl font-black mb-2 tracking-tight">Protected Content</h3>
+                        <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mb-10">Creator has marked this as sensitive</p>
                         <button 
                           onClick={() => setRevealedNSFW(prev => ({ ...prev, [link.id]: true }))}
-                          className="bg-white text-black px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:scale-105 transition-transform active:scale-95"
+                          className="bg-white text-black px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-[0_20px_40px_-10px_rgba(255,255,255,0.3)] hover:scale-105 transition-all active:scale-95"
                         >
-                          Show Content
+                          Unlock Media
                         </button>
                       </div>
                     )}
                   </div>
-                  <div className="p-10 text-center space-y-6">
-                     <div className="space-y-3">
-                        <h2 className="text-3xl font-black text-slate-900 leading-tight">
-                          {promo.viralTitle || promo.caption}
+                  <div className="p-8 md:p-12 text-center space-y-8 bg-gradient-to-b from-white to-slate-50">
+                     <div className="space-y-4">
+                        <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight px-2">
+                          {promo ? (promo.viralTitle || promo.caption) : link.title}
                         </h2>
-                        {promo.viralDescription && (
-                          <p className="text-slate-500 text-sm font-medium leading-relaxed whitespace-pre-wrap line-clamp-3">
-                            {promo.viralDescription}
+                        {(promo?.viralDescription || link.viralDescription) && (
+                          <p className="text-slate-500 text-sm font-medium leading-relaxed whitespace-pre-wrap line-clamp-3 px-4 italic opacity-80">
+                            {promo?.viralDescription || link.viralDescription}
                           </p>
                         )}
                      </div>
-                     <a 
-                      href={promo.targetUrl}
-                      target="_blank"
-                      className="block w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black shadow-[0_10px_30px_-10px_rgba(0,0,0,0.4)] hover:scale-[1.02] transition-transform active:scale-95"
-                     >
-                      Shop This Collection
-                     </a>
+                     <div className="flex flex-col gap-3">
+                       <a 
+                        href={link.url}
+                        target="_blank"
+                        className="block w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:shadow-indigo-500/20 hover:bg-indigo-600 transition-all active:scale-[0.98]"
+                       >
+                        {promo ? 'View Featured Offer' : 'Watch Full Experience'}
+                       </a>
+                       <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Powered by Vendo Smart Engine</p>
+                     </div>
                   </div>
                 </div>
               );
@@ -258,7 +275,7 @@ const PublicProfile: React.FC = () => {
                       ) : favicon ? (
                         <img src={favicon} className="w-full h-full object-contain rounded-md" alt="" />
                       ) : (
-                        <i className={`fa-solid ${link.type === 'shop' ? 'fa-bag-shopping' : 'fa-link'} text-slate-400`}></i>
+                        <i className={`fa-solid ${link.type === 'shop' ? 'fa-bag-shopping' : link.type === 'video' ? 'fa-play' : 'fa-link'} text-slate-400`}></i>
                       )}
                     </div>
                     <span className="text-lg truncate">{link.title}</span>
