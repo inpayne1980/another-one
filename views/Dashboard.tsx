@@ -21,7 +21,7 @@ const Dashboard: React.FC = () => {
     const saved = localStorage.getItem('lp_links');
     return saved ? JSON.parse(saved) : [
       { id: '1', title: 'Visit My Portfolio', url: 'https://example.com', active: true, clicks: 120, type: 'standard' },
-      { id: '2', title: 'Check Out My New Video', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', active: true, clicks: 840, type: 'standard', isHeroVideo: true }
+      { id: '2', title: 'Check Out My New Video', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', active: true, clicks: 840, type: 'standard', isHeroVideo: true, isNSFW: false }
     ];
   });
 
@@ -73,7 +73,8 @@ const Dashboard: React.FC = () => {
       active: true,
       clicks: 0,
       type: type,
-      price: type === 'shop' ? '$19.99' : undefined
+      price: type === 'shop' ? '$19.99' : undefined,
+      isNSFW: false
     };
     setLinks([newLink, ...links]);
   };
@@ -84,7 +85,6 @@ const Dashboard: React.FC = () => {
 
   const removeLink = (id: string) => {
     setLinks(links.filter(l => l.id !== id));
-    // Also cleanup promo data if it's a video
     const promos = JSON.parse(localStorage.getItem('lp_promos') || '[]');
     localStorage.setItem('lp_promos', JSON.stringify(promos.filter((p: any) => p.id !== id)));
   };
@@ -237,6 +237,15 @@ const Dashboard: React.FC = () => {
                    <div className="flex items-center gap-6 text-[11px] font-bold uppercase tracking-widest text-slate-500">
                       <span className="flex items-center gap-2 text-indigo-600"><i className="fa-solid fa-chart-simple"></i> {link.clicks} clicks</span>
                       <button onClick={() => updateLink(link.id, { isFeatured: !link.isFeatured })} className={`${link.isFeatured ? 'text-amber-500' : 'hover:text-slate-900'} transition-colors flex items-center gap-2`}><i className="fa-solid fa-star"></i> {link.isFeatured ? 'Featured' : 'Highlight'}</button>
+                      
+                      <button 
+                        onClick={() => updateLink(link.id, { isNSFW: !link.isNSFW })} 
+                        className={`flex items-center gap-2 transition-colors ${link.isNSFW ? 'text-red-500' : 'hover:text-slate-900'}`}
+                      >
+                        <i className={`fa-solid ${link.isNSFW ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        {link.isNSFW ? 'NSFW Active' : 'Mark NSFW'}
+                      </button>
+
                       <button onClick={() => removeLink(link.id)} className="text-slate-300 hover:text-red-500 transition-colors"><i className="fa-solid fa-trash-can"></i> Delete</button>
                    </div>
                 </div>

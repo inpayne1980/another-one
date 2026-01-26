@@ -34,13 +34,8 @@ const getPlatformFavicon = (platform: string) => {
 const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
   const theme = THEMES.find(t => t.id === profile.themeId) || THEMES[0];
   
-  // Logic to show active promos in preview
   const promos: PromoData[] = JSON.parse(localStorage.getItem('lp_promos') || '[]');
-  const activePromos = links
-    .filter(l => l.active && l.isHeroVideo)
-    .map(l => promos.find(p => p.id === l.id))
-    .filter((p): p is PromoData => !!p);
-
+  const activeHeroLinks = links.filter(l => l.active && l.isHeroVideo);
   const activeLinks = links.filter(l => l.active && !l.isHeroVideo);
 
   const bgStyle: React.CSSProperties = profile.backgroundType === 'color' 
@@ -91,17 +86,14 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
   return (
     <div className="sticky top-10 flex justify-center">
       <div className="relative border-slate-900 bg-slate-900 border-[10px] rounded-[3rem] h-[640px] w-[300px] shadow-2xl overflow-hidden ring-4 ring-slate-100/50">
-        {/* Phone Notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-40"></div>
         
         <div className="relative w-full h-full bg-white overflow-hidden flex flex-col">
-          {/* Background Layers */}
           <div className={`absolute inset-0 transition-all duration-700 ${profile.backgroundType === 'theme' ? theme.background : ''}`} style={bgStyle} />
           {profile.backgroundType === 'image' && (
             <div className="absolute inset-0 pointer-events-none z-[1] bg-black/30" style={{ opacity: profile.backgroundOpacity || 0.3 }} />
           )}
 
-          {/* Scrollable Content */}
           <div className="relative z-10 w-full h-full overflow-y-auto no-scrollbar p-6 text-center flex flex-col items-center">
             <div className="mt-10 mb-4">
               <img 
@@ -120,22 +112,29 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
 
             {profile.socialsPosition === 'top' && <SocialHub />}
 
-            {/* Video Promos In Preview */}
-            {activePromos.length > 0 && (
-              <div className="w-full space-y-4 mb-4">
-                {activePromos.map(promo => (
-                  <div key={promo.id} className="bg-white rounded-2xl overflow-hidden shadow-lg border border-white/10">
-                    <div className="aspect-[9/16] relative bg-black">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                         <i className="fa-solid fa-play text-white/50 text-2xl"></i>
+            {/* Video Hero Promos In Preview */}
+            {activeHeroLinks.length > 0 && (
+              <div className="w-full space-y-4 mb-6">
+                {activeHeroLinks.map(link => {
+                  const promo = promos.find(p => p.id === link.id);
+                  if (!promo) return null;
+                  return (
+                    <div key={link.id} className="bg-white rounded-2xl overflow-hidden shadow-lg border border-white/10 relative">
+                      <div className="aspect-[9/16] relative bg-black">
+                        <img src={`https://img.youtube.com/vi/${promo.videoId}/hqdefault.jpg`} className={`absolute inset-0 w-full h-full object-cover ${link.isNSFW ? 'blur-xl opacity-20' : 'opacity-30'}`} alt="" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                           <i className={`fa-solid ${link.isNSFW ? 'fa-eye-slash' : 'fa-play'} text-white/50 text-2xl`}></i>
+                        </div>
+                        {link.isNSFW && (
+                          <div className="absolute bottom-2 left-0 right-0 text-[8px] text-white/60 font-black uppercase">NSFW BLUR ACTIVE</div>
+                        )}
                       </div>
-                      <img src={`https://img.youtube.com/vi/${promo.videoId}/hqdefault.jpg`} className="absolute inset-0 w-full h-full object-cover opacity-30" alt="" />
+                      <div className="p-3 text-center">
+                         <p className="text-[10px] font-black text-slate-900 truncate">"{promo.caption}"</p>
+                      </div>
                     </div>
-                    <div className="p-3 text-center">
-                       <p className="text-[10px] font-black text-slate-900 truncate">"{promo.caption}"</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -143,9 +142,9 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
               {activeLinks.map(link => (
                 <div 
                   key={link.id} 
-                  className={`w-full py-3.5 px-4 ${theme.buttonRadius} flex items-center justify-between text-[11px] font-black shadow-lg border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor} ${link.isFeatured ? 'ring-2 ring-white/40' : ''}`}
+                  className={`relative w-full py-3.5 px-4 ${theme.buttonRadius} flex items-center justify-between text-[11px] font-black shadow-lg border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor} ${link.isFeatured ? 'ring-2 ring-white/40' : ''}`}
                 >
-                  <div className="flex items-center gap-3 truncate">
+                  <div className={`flex items-center gap-3 truncate ${link.isNSFW ? 'blur-[2px] opacity-50' : ''}`}>
                     <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 p-1 shadow-sm">
                       {getFaviconUrl(link.url) ? (
                         <img src={getFaviconUrl(link.url)!} className="w-full h-full object-contain" alt="" />
@@ -155,7 +154,10 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links }) => {
                     </div>
                     <span className="truncate">{link.title}</span>
                   </div>
-                  {link.price && <span className="text-[9px] bg-black/10 px-2 py-0.5 rounded-md">{link.price}</span>}
+                  <div className="flex items-center gap-2">
+                    {link.isNSFW && <i className="fa-solid fa-eye-slash text-red-400 text-[10px]"></i>}
+                    {link.price && <span className="text-[9px] bg-black/10 px-2 py-0.5 rounded-md">{link.price}</span>}
+                  </div>
                 </div>
               ))}
             </div>

@@ -32,6 +32,7 @@ const PublicProfile: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [links, setLinks] = useState<Link[]>([]);
   const [promos, setPromos] = useState<PromoData[]>([]);
+  const [revealedNSFW, setRevealedNSFW] = useState<Record<string, boolean>>({});
   const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
@@ -40,7 +41,7 @@ const PublicProfile: React.FC = () => {
     const savedPromos = localStorage.getItem('lp_promos');
     
     if (savedProfile) setProfile(JSON.parse(savedProfile));
-    if (savedLinks) setLinks(JSON.parse(savedLinks)); // Load all links including inactive for matching
+    if (savedLinks) setLinks(JSON.parse(savedLinks));
     if (savedPromos) setPromos(JSON.parse(savedPromos));
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -57,13 +58,7 @@ const PublicProfile: React.FC = () => {
 
   const theme = THEMES.find(t => t.id === profile.themeId) || THEMES[0];
 
-  // Derive which promos should actually show based on active links with isHeroVideo=true
-  const activePromos = links
-    .filter(l => l.active && l.isHeroVideo)
-    .map(l => promos.find(p => p.id === l.id))
-    .filter((p): p is PromoData => !!p);
-
-  // Derive standard links (non-video or video toggled off)
+  const activeHeroLinks = links.filter(l => l.active && l.isHeroVideo);
   const activeLinks = links.filter(l => l.active && !l.isHeroVideo);
 
   const SocialHub = () => {
@@ -158,37 +153,71 @@ const PublicProfile: React.FC = () => {
 
         {profile.socialsPosition === 'top' && <SocialHub />}
 
-        {/* Video Promos Grid - Derives from linked Active Hero Video Links */}
-        {activePromos.length > 0 && (
-          <div className="w-full space-y-8 mb-8 px-2">
-            {activePromos.map(promo => (
-              <div key={promo.id} className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="aspect-[9/16] relative bg-black">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${promo.videoId}?start=${promo.clipStart}&end=${promo.clipEnd}&autoplay=0&mute=1&modestbranding=1&rel=0`}
-                    className="absolute inset-0 w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
+        {/* Hero Video Section */}
+        {activeHeroLinks.length > 0 && (
+          <div className="w-full space-y-12 mb-16 px-2">
+            {activeHeroLinks.map(link => {
+              const promo = promos.find(p => p.id === link.id);
+              if (!promo) return null;
+              const isBlurred = link.isNSFW && !revealedNSFW[link.id];
+
+              return (
+                <div key={link.id} className="group bg-white rounded-[2.5rem] overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.3)] border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <div className="aspect-[9/16] relative bg-black overflow-hidden">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${promo.videoId}?start=${promo.clipStart}&end=${promo.clipEnd}&autoplay=0&mute=1&modestbranding=1&rel=0`}
+                      className={`absolute inset-0 w-full h-full transition-all duration-700 ${isBlurred ? 'blur-3xl scale-110 opacity-30' : 'blur-0 opacity-100'}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                    
+                    {isBlurred && (
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xl p-8 text-center transition-all group-hover:bg-black/50">
+                        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-6 border border-white/20">
+                          <i className="fa-solid fa-eye-slash text-white text-2xl"></i>
+                        </div>
+                        <h3 className="text-white text-2xl font-black mb-2 tracking-tight">Sensitive Content</h3>
+                        <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-10">This video may contain content that some viewers find sensitive.</p>
+                        <button 
+                          onClick={() => setRevealedNSFW(prev => ({ ...prev, [link.id]: true }))}
+                          className="bg-white text-black px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:scale-105 transition-transform active:scale-95"
+                        >
+                          Show Content
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-10 text-center space-y-6">
+                     <div className="space-y-3">
+                        <h2 className="text-3xl font-black text-slate-900 leading-tight">
+                          {promo.viralTitle || promo.caption}
+                        </h2>
+                        {promo.viralDescription && (
+                          <p className="text-slate-500 text-sm font-medium leading-relaxed whitespace-pre-wrap line-clamp-3">
+                            {promo.viralDescription}
+                          </p>
+                        )}
+                     </div>
+                     <a 
+                      href={promo.targetUrl}
+                      target="_blank"
+                      className="block w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black shadow-[0_10px_30px_-10px_rgba(0,0,0,0.4)] hover:scale-[1.02] transition-transform active:scale-95"
+                     >
+                      Shop This Collection
+                     </a>
+                  </div>
                 </div>
-                <div className="p-8 text-center space-y-6">
-                   <p className="text-xl font-black text-slate-900 leading-tight">"{promo.caption}"</p>
-                   <a 
-                    href={promo.targetUrl}
-                    target="_blank"
-                    className="block w-full bg-slate-900 text-white py-4 rounded-2xl font-black shadow-lg hover:scale-[1.02] transition-transform active:scale-95"
-                   >
-                    Shop Featured Items
-                   </a>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
+        {/* Standard Links Stack */}
         <div className="w-full space-y-4 px-2">
           {activeLinks.map((link) => {
              const favicon = getFaviconUrl(link.url);
+             const isNSFWBlocked = link.isNSFW && !revealedNSFW[link.id];
+
              if (link.type === 'newsletter') {
                return (
                  <div key={link.id} className={`w-full p-8 rounded-[2rem] shadow-xl border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor}`}>
@@ -209,27 +238,43 @@ const PublicProfile: React.FC = () => {
              }
 
              return (
-              <a
-                key={link.id}
-                href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
-                target="_blank" rel="noopener noreferrer"
-                className={`group w-full py-5 px-6 rounded-[2rem] flex items-center justify-between font-black shadow-xl transition-all hover:scale-[1.02] active:scale-95 border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor} ${link.isFeatured ? 'ring-2 ring-white/40' : ''}`}
-              >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm p-1.5">
-                    {favicon ? (
-                      <img src={favicon} className="w-full h-full object-contain rounded-md" alt="" />
-                    ) : (
-                      <i className={`fa-solid ${link.type === 'shop' ? 'fa-bag-shopping' : 'fa-link'} text-slate-400`}></i>
-                    )}
+              <div key={link.id} className="relative">
+                <a
+                  href={isNSFWBlocked ? '#' : (link.url.startsWith('http') ? link.url : `https://${link.url}`)}
+                  onClick={(e) => {
+                    if (isNSFWBlocked) {
+                      e.preventDefault();
+                      setRevealedNSFW(prev => ({ ...prev, [link.id]: true }));
+                    }
+                  }}
+                  target={isNSFWBlocked ? undefined : "_blank"} 
+                  rel="noopener noreferrer"
+                  className={`group w-full py-5 px-6 rounded-[2rem] flex items-center justify-between font-black shadow-xl transition-all hover:scale-[1.02] active:scale-95 border border-white/10 ${theme.buttonColor} ${theme.buttonTextColor} ${link.isFeatured ? 'ring-2 ring-white/40' : ''}`}
+                >
+                  <div className={`flex items-center gap-4 min-w-0 transition-all ${isNSFWBlocked ? 'blur-sm grayscale' : ''}`}>
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm p-1.5 overflow-hidden">
+                      {link.thumbnailUrl ? (
+                         <img src={link.thumbnailUrl} className="w-full h-full object-cover" alt="" />
+                      ) : favicon ? (
+                        <img src={favicon} className="w-full h-full object-contain rounded-md" alt="" />
+                      ) : (
+                        <i className={`fa-solid ${link.type === 'shop' ? 'fa-bag-shopping' : 'fa-link'} text-slate-400`}></i>
+                      )}
+                    </div>
+                    <span className="text-lg truncate">{link.title}</span>
                   </div>
-                  <span className="text-lg truncate">{link.title}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  {link.price && <span className="text-xs bg-black/10 px-3 py-1 rounded-full">{link.price}</span>}
-                  <i className="fa-solid fa-chevron-right text-xs opacity-20 group-hover:opacity-100 transition-all"></i>
-                </div>
-              </a>
+                  
+                  <div className="flex items-center gap-3">
+                    {isNSFWBlocked && (
+                      <span className="text-[10px] bg-red-500 text-white px-3 py-1 rounded-full uppercase tracking-widest font-black flex items-center gap-2">
+                        <i className="fa-solid fa-eye-slash"></i> NSFW
+                      </span>
+                    )}
+                    {link.price && !isNSFWBlocked && <span className="text-xs bg-black/10 px-3 py-1 rounded-full">{link.price}</span>}
+                    <i className="fa-solid fa-chevron-right text-xs opacity-20 group-hover:opacity-100 transition-all"></i>
+                  </div>
+                </a>
+              </div>
              );
           })}
         </div>

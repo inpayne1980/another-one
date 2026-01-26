@@ -12,6 +12,8 @@ export interface Link {
   isFeatured?: boolean;
   isHeroVideo?: boolean;
   isNSFW?: boolean;
+  thumbnailUrl?: string;
+  viralDescription?: string;
 }
 
 export interface ClipSuggestion {
@@ -19,6 +21,8 @@ export interface ClipSuggestion {
   start: number;
   end: number;
   caption: string;
+  viralTitle: string;
+  viralDescription: string;
   reasoning: string;
 }
 
@@ -29,6 +33,9 @@ export interface PromoData {
   clipStart: number;
   clipEnd: number;
   caption: string;
+  viralTitle: string;
+  viralDescription: string;
+  thumbnailUrl?: string;
   targetUrl: string;
   platforms: string[];
   status: 'published' | 'draft' | 'publishing';

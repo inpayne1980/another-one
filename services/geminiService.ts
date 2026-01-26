@@ -2,19 +2,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ClipSuggestion } from "../types";
 
-// Always use process.env.API_KEY directly as per guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const optimizeBio = async (currentBio: string, name: string): Promise<string> => {
   try {
-    // Basic text task uses gemini-3-flash-preview
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `You are a world-class social media strategist. Rewrite this "link in bio" bio to be more engaging and professional. 
       Name: ${name}. Current bio: ${currentBio}. 
       Constraint: Max 150 characters. Tone: Punchy and Modern. Return ONLY the new bio.`,
     });
-    // Use .text property directly
     return response.text?.trim() || currentBio;
   } catch (error) {
     console.error("Gemini optimization failed", error);
@@ -24,14 +21,12 @@ export const optimizeBio = async (currentBio: string, name: string): Promise<str
 
 export const rewriteLinkTitle = async (currentTitle: string): Promise<string> => {
   try {
-    // Basic text task uses gemini-3-flash-preview
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Rewrite this link button title to be a high-converting call to action. 
       Current Title: "${currentTitle}". 
       Return ONLY the new title (max 4 words).`,
     });
-    // Use .text property directly
     return response.text?.trim().replace(/"/g, '') || currentTitle;
   } catch {
     return currentTitle;
@@ -40,7 +35,6 @@ export const rewriteLinkTitle = async (currentTitle: string): Promise<string> =>
 
 export const suggestLinks = async (bio: string): Promise<{title: string, placeholderUrl: string, type: any}[]> => {
   try {
-    // Basic extraction task uses gemini-3-flash-preview
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Analyze this bio: "${bio}". Suggest 4 essential link blocks (standard, shop, newsletter, or tip). Return as JSON.`,
@@ -60,7 +54,6 @@ export const suggestLinks = async (bio: string): Promise<{title: string, placeho
         }
       }
     });
-    // Use .text property directly and trim
     const jsonStr = response.text.trim();
     return JSON.parse(jsonStr || '[]');
   } catch (error) {
@@ -73,7 +66,6 @@ export async function getClipSuggestions(
   transcript: string, 
   images: { data: string, mimeType: string }[] = []
 ): Promise<ClipSuggestion[]> {
-  // Advanced reasoning tasks (identifying viral segments) should use gemini-3-pro-preview
   const imageParts = images.map(img => ({
     inlineData: {
       data: img.data.split(',')[1] || img.data,
@@ -83,6 +75,7 @@ export async function getClipSuggestions(
 
   const textPart = {
     text: `Identify the most viral, high-conversion 15-60s segments for short-form video.
+    For each segment, also generate a Viral Title and a Viral Description (including keywords and hashtags).
     YouTube URL: ${youtubeUrl}
     Transcript: ${transcript}
     Refer to any attached images for visual context. Provide exactly 3 suggestions in a JSON array.`
@@ -102,19 +95,53 @@ export async function getClipSuggestions(
             start: { type: Type.INTEGER },
             end: { type: Type.INTEGER },
             caption: { type: Type.STRING },
+            viralTitle: { type: Type.STRING },
+            viralDescription: { type: Type.STRING },
             reasoning: { type: Type.STRING },
           },
-          required: ["id", "start", "end", "caption", "reasoning"],
+          required: ["id", "start", "end", "caption", "viralTitle", "viralDescription", "reasoning"],
         },
       },
     },
   });
 
   try {
-    // Use .text property directly and trim
     const jsonStr = response.text.trim();
     return JSON.parse(jsonStr || '[]');
   } catch {
     return [];
   }
+}
+
+export async function generateViralThumbnail(context: string, overlayText?: string): Promise<string | undefined> {
+  try {
+    let prompt = `Generate a highly professional, click-driven YouTube/TikTok thumbnail image for a video about: ${context}. The aesthetic should be modern, clean, and high-contrast, suitable for a professional creator.`;
+    
+    if (overlayText && overlayText.trim().length > 0) {
+      prompt += ` IMPORTANT: Include the text "${overlayText}" prominently and clearly in the image using bold, modern, and highly legible typography that pops against the background.`;
+    } else {
+      prompt += ` Do not include any text in the image.`;
+    }
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [{ text: prompt }]
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9"
+        }
+      }
+    });
+
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+  } catch (error) {
+    console.error("Thumbnail generation failed:", error);
+  }
+  return undefined;
 }
