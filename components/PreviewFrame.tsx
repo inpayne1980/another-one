@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { UserProfile, Link, THEMES, PromoData } from '../types';
 
 interface PreviewFrameProps {
@@ -41,8 +41,10 @@ const getPlatformFavicon = (platform: string) => {
 
 const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links = [], promos = [] }) => {
   const theme = THEMES.find(t => t.id === profile?.themeId) || THEMES[0];
+  const [copied, setCopied] = useState(false);
   
   // Use passed promos prop, fallback to localStorage ONLY if not provided
+  // Fixed: Changed Array.isArray(safePromos) to Array.isArray(promos) to avoid using the variable before declaration.
   const safePromos = Array.isArray(promos) && promos.length > 0 
     ? promos 
     : (() => {
@@ -66,6 +68,13 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links = [], promos
         height: '100%',
       } 
     : {};
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/#/p/${profile.username}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const SocialHub = () => {
     if (!profile?.socials) return null;
@@ -102,10 +111,23 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ profile, links = [], promos
   };
 
   return (
-    <div className="sticky top-10 flex justify-center">
-      <div className="relative border-slate-900 bg-slate-900 border-[10px] rounded-[3rem] h-[640px] w-[300px] shadow-2xl overflow-hidden ring-4 ring-slate-100/50">
+    <div className="sticky top-10 flex flex-col items-center">
+      <div className="relative border-slate-900 bg-slate-900 border-[10px] rounded-[3rem] h-[640px] w-[300px] shadow-2xl overflow-hidden ring-4 ring-slate-100/50 group">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-40"></div>
         
+        {/* Share Button Overlay */}
+        <button 
+          onClick={handleShare}
+          className="absolute top-8 right-6 z-[60] w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-2xl hover:bg-white hover:text-indigo-600 transition-all active:scale-95 group/share"
+        >
+          <i className={`fa-solid ${copied ? 'fa-check' : 'fa-arrow-up-from-bracket'} text-sm`}></i>
+          {copied && (
+            <div className="absolute top-12 right-0 bg-indigo-600 text-white text-[8px] font-black uppercase px-2 py-1 rounded-lg animate-in fade-in slide-in-from-top-1 whitespace-nowrap">
+              Link Copied!
+            </div>
+          )}
+        </button>
+
         <div className="relative w-full h-full bg-white overflow-hidden flex flex-col">
           <div className={`absolute inset-0 transition-all duration-700 ${profile?.backgroundType === 'theme' ? theme.background : ''}`} style={bgStyle} />
           {profile?.backgroundType === 'image' && (
